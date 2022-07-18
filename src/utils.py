@@ -64,13 +64,13 @@ class FlipChannels(object):
 
 class Resize():
     def __init__(self, target_size=(256, 256)):
-        self.target_size = (256, 256)
+        self.target_size = target_size
 
     def __call__(self, sample):
         wx, wy = self.target_size
         wx0, wy0, _ = sample['input'].shape
-        sample['input'] = transform.resize(sample['input'], self.target_size, preserve_range=True).astype(int)
-        sample['target'] = transform.resize(sample['target'], self.target_size, preserve_range=True).astype(int)
+        sample['input'] = transform.resize(sample['input'], self.target_size, preserve_range=True)
+        sample['target'] = transform.resize(sample['target'], self.target_size, preserve_range=True)
         return sample
 
 class MinResize(Resize):
@@ -92,11 +92,11 @@ class ChangeType():
     def __init__(self, problem='regr'):
         self.problem = problem
     def __call__(self, sample):
-        sample['input'] = sample['input'].astype(float)
+        sample['input'] = sample['input'].astype(np.float32)
         if self.problem == 'regr':
-            sample['target'] = sample['target'].astype(float)
+            sample['target'] = sample['target'].astype(np.float32)
         else:
-            sample['target'] = sample['target'].astype(int)
+            sample['target'] = sample['target'].astype(np.uint8)
         return sample
 
 class Scale():

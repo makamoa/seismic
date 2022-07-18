@@ -73,24 +73,33 @@ def get_derain_dataset(rootdir="/home/makam0a/Dropbox/projects/denoising/Restorm
                        min_size=256, crop_size=(224, 224), target_size=(224, 224), normalize=False,
                        noise_transforms=[]):
     transforms_ = []
-    ImageNormalize = [InputNormalize(imagenet_mean, imagenet_std), TargetNormalize(imagenet_mean, imagenet_std)]
+    ImageNormalize = [InputNormalize(imagenet_mean, imagenet_std)]
     ImageChangeType = [ChangeType(), Scale()]
     transforms_ += [MinResize(min_size=min_size)]
     transforms_ += ImageChangeType
     transforms_ += [RandomCrop(crop_size)]
     if crop_size != target_size:
         transforms_ += [Resize(target_size)]
+    transforms_ += noise_transforms
     transforms_ += [FlipChannels(), ToTensor()]
     if normalize:
         transforms_ += ImageNormalize
-    transforms_ += noise_transforms
     return DerainLoader(rootdir, transform=transforms.Compose(transforms_))
 
 def get_first_break_dataset(rootdir="/home/makam0a/Dropbox/gendata/data/",
+                            target_size=(224, 224),
+                            noise_transforms=[]):
+    transforms_ = []
+    transforms_ += noise_transforms
+    transforms_ += [Resize(target_size), ChangeType(problem='class')]
+    transforms_ += [FlipChannels(), ToTensor()]
+    return FirstBreakLoader(rootdir, transform=transforms.Compose(transforms_))
+
+def get_denoise_dataset(rootdir="/home/makam0a/Dropbox/gendata/data/",
                        noise_transforms=[]):
     transforms_ = []
-    transforms_ += [FlipChannels(), ToTensor()]
     transforms_ += noise_transforms
+    transforms_ += [FlipChannels(), ToTensor()]
     return FirstBreakLoader(rootdir, transform=transforms.Compose(transforms_))
 
 def get_dataset(dtype, *pargs, **kwargs):
@@ -98,6 +107,14 @@ def get_dataset(dtype, *pargs, **kwargs):
         dataset = get_derain_dataset(*pargs, **kwargs)
     elif dtype == 'firstbreak':
         dataset = get_first_break_dataset()
+    elif dtype == 'denoise':
+        dataset = get_denoise_dataset()
     else:
         raise ValueError("Unknown Dataset Type")
     return dataset
+
+def get_train_val_dataset(dataset, valid_split=0.1):
+    train_size = int((1 - valid_split) * len(dataset))
+    test_size = len(dataset) - train_size
+    train_dataset, val_dataset = torch.utils.data.random_split(dataset, [train_size, test_size])
+    return train_dataset, val_dataset
