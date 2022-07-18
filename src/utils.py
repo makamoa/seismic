@@ -1,11 +1,7 @@
-import os
-import glob
 import torch
 import numpy as np
 from skimage import io, transform
 from torchvision import transforms
-from torchvision.utils import make_grid
-from torch.utils.data import Dataset, DataLoader, random_split
 
 imagenet_mean = np.array([0.485, 0.456, 0.406])
 imagenet_std = np.array([0.229, 0.224, 0.225])
@@ -54,11 +50,15 @@ class ToTensor(object):
         return {'input': torch.from_numpy(input), 'target': torch.from_numpy(target)}
 
 class FlipChannels(object):
+    def __init__(self, only_input=False):
+        self.only_input = only_input
+
     def __call__(self, sample):
         input, target = sample['input'], sample['target']
         # swap channel axis
         input = input.transpose((2, 0, 1))
-        target = target.transpose((2, 0, 1))
+        if not self.only_input:
+            target = target.transpose((2, 0, 1))
         return {'input': input, 'target': target}
 
 
@@ -96,7 +96,7 @@ class ChangeType():
         if self.problem == 'regr':
             sample['target'] = sample['target'].astype(np.float32)
         else:
-            sample['target'] = sample['target'].astype(np.uint8)
+            sample['target'] = sample['target'].astype(np.int)
         return sample
 
 class Scale():

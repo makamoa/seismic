@@ -1,11 +1,4 @@
-import h5py
 import os
-import glob
-import torch
-import numpy as np
-from skimage import io, transform
-from torchvision import transforms
-from torchvision.utils import make_grid
 from torch.utils.data import Dataset, DataLoader, random_split
 from utils import *
 
@@ -24,6 +17,7 @@ class FirstBreakLoader(BaseLoader):
         self.inputs = os.listdir(self.inputdir)
         self.targets = os.listdir(self.targetdir)
         self.transform = transform
+        self.class_names = ['empty', 'wave']
 
     def __len__(self):
         assert len(self.targets) == len(self.inputs)
@@ -34,13 +28,25 @@ class FirstBreakLoader(BaseLoader):
         return image[...,None]
 
     def read_target(self, idx):
-        return np.load(os.path.join(self.targetdir,self.targets[idx]))[...,None]
+        return np.load(os.path.join(self.targetdir,self.targets[idx]))
 
     def __getitem__(self, idx):
         image = self.read_input(idx)
         target = self.read_target(idx)
         sample = {'input': image, 'target': target}
         return self.transform(sample) if self.transform else sample
+
+
+class DenoiseLoader(FirstBreakLoader):
+    def __init__(self, *pargs, **kwargs):
+        super(DenoiseLoader, self).__init__(*pargs, **kwargs)
+        self.targetdir = self.inputdir
+        self.targets = self.inputs
+        self.transform = self.transform
+
+    def read_target(self, idx):
+        return super(DenoiseLoader, self).read_target(idx)[...,None]
+
 
 
 class DerainLoader(BaseLoader):
@@ -91,24 +97,25 @@ def get_first_break_dataset(rootdir="/home/makam0a/Dropbox/gendata/data/",
                             noise_transforms=[]):
     transforms_ = []
     transforms_ += noise_transforms
-    transforms_ += [Resize(target_size), ChangeType(problem='class')]
-    transforms_ += [FlipChannels(), ToTensor()]
+    transforms_ += [ChangeType(problem='segment')]
+    transforms_ += [FlipChannels(only_input=True), ToTensor()]
     return FirstBreakLoader(rootdir, transform=transforms.Compose(transforms_))
 
 def get_denoise_dataset(rootdir="/home/makam0a/Dropbox/gendata/data/",
                        noise_transforms=[]):
     transforms_ = []
     transforms_ += noise_transforms
+    transforms_ += [ChangeType()]
     transforms_ += [FlipChannels(), ToTensor()]
-    return FirstBreakLoader(rootdir, transform=transforms.Compose(transforms_))
+    return DenoiseLoader(rootdir, transform=transforms.Compose(transforms_))
 
 def get_dataset(dtype, *pargs, **kwargs):
     if dtype == 'derain':
         dataset = get_derain_dataset(*pargs, **kwargs)
     elif dtype == 'firstbreak':
-        dataset = get_first_break_dataset()
+        dataset = get_first_break_dataset(*pargs, **kwargs)
     elif dtype == 'denoise':
-        dataset = get_denoise_dataset()
+        dataset = get_denoise_dataset(*pargs, **kwargs)
     else:
         raise ValueError("Unknown Dataset Type")
     return dataset

@@ -1,41 +1,13 @@
-import os
-import glob
-import torch
-import numpy as np
-# from skimage import io, transform
-from torchvision import transforms
-from torchvision.utils import make_grid
-from torch.utils.data import Dataset, DataLoader, random_split
-import matplotlib.pyplot as plt
-import numpy as np
-import pylops
-
-# import glob
-import cv2 as cv2
-import numpy as np
-# import matplotlib.pyplot as plt
 import random
-import math
 import pylops
 from pylops.utils.wavelets import ricker
-from skimage import io
-from skimage import color
-from skimage.restoration import denoise_nl_means, estimate_sigma
-
 import numpy as np
 from numpy.fft import fft, fftfreq, ifft
-
-from scipy import ndimage as nd
-from scipy.fft import fft, ifft
 from scipy import fftpack
 
-from PIL import Image, ImageDraw
-import matplotlib.pyplot as plt
-import time
 import cv2
 from math import sqrt
 from math import exp
-from matplotlib.colors import LogNorm
 
 from numpy import sqrt, newaxis, integer
 from numpy.fft import irfft, rfftfreq
@@ -422,19 +394,6 @@ class add_linearnoise(object):
 
 def odd(l,u):
     return([a for a in range(l,u) if a%2 != 0])
-
-def get_first_break_dataset(rootdir="/data/maksim/data/",
-                       noise_transforms=[]):
-    transforms_ = []
-    transforms_ += [add_color_noise(),add_bandpassed_noise(),add_blurnoise(),add_rainnoise(),add_gaussnoise(),add_spnoise(),add_specklenoise(),add_linearnoise(),add_noise_FFT()]
-    transforms_ += [FlipChannels(), ToTensor()]
-#     
-    print(transforms_)
-    return FirstBreakLoader(rootdir, transform=transforms.Compose(transforms_))
     
-    
-firstbreak_dataset = get_dataset('firstbreak')
-dataloader = DataLoader(firstbreak_dataset, batch_size=batch_size, shuffle=True, num_workers=workers)
-sample = iter(dataloader).next()
-for i in range(20):
-    show(sample, idx=i)
+complex_noise_transforms \
+    = [add_color_noise(),add_bandpassed_noise(),add_blurnoise(),add_rainnoise(),add_gaussnoise(),add_spnoise(),add_specklenoise(),add_linearnoise(),add_noise_FFT()]
