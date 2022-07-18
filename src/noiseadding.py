@@ -14,9 +14,19 @@ from numpy.fft import irfft, rfftfreq
 from numpy.random import default_rng, Generator, RandomState
 from numpy import sum as npsum
 
+def show(sample, idx=0, axes=None):
+    input = sample['input'][idx]
+    target = sample['target'][idx]
+#     print(input.shape)
+    if axes is None:
+        fig, axes = plt.subplots(1,2, figsize=[20,10])
+    axes[0].imshow(input.numpy().transpose((1, 2, 0)),cmap="seismic")
+    axes[1].imshow(target.numpy().transpose((1, 2, 0)),cmap="seismic")
 
-
+# show(sample, idx=0)
 class add_color_noise(object):
+    def __init__(self, noisescale=0.005): 
+        self.noisescale=noisescale 
     def powerlaw_psd_gaussian(self,exponent, size, fmin, random_state):
         # Make sure size is a list so we can iterate it and assign to it.
         try:
@@ -96,7 +106,7 @@ class add_color_noise(object):
         return normal_dist
    
     def __call__(self, sample):
-        noisescale=0.005 
+        noisescale=self.noisescale 
         fmin=0         
         input, target = sample['input'], sample['target']
         img=input.squeeze()
@@ -109,6 +119,10 @@ class add_color_noise(object):
         return {'input': input, 'target': target}
     
 class add_bandpassed_noise(object):
+    def __init__(self, f_low=1,f_high=10,noisescale=0.5): 
+        self.f_low=f_low
+        self.f_high=f_high
+        self.noisescale=noisescale
 #     print(BasicNoise) 
         # USEFUL FUNCTIONS
     def band_limited_noise(self,min_freq, max_freq, np_seed_rnd, samples=1024, samplerate=1):
@@ -151,8 +165,9 @@ class add_bandpassed_noise(object):
         f[-1:-1-Np:-1] = np.conj(f[1:Np+1])
         return np.fft.ifft(f).real
     def __call__(self, sample):
-        f_low=1
-        f_high=10   
+        f_low=self.f_low
+        f_high=self.f_high  
+        noisescale=self.noisescale 
         input, target = sample['input'], sample['target']
         img=input.squeeze()
         dt = 0.002
@@ -161,15 +176,17 @@ class add_bandpassed_noise(object):
                                     [0.02,0.35], 
                                     freqrange, 
                                     dt=dt, 
-                                    nrels=1)).squeeze()*0.5 
+                                    nrels=1)).squeeze()*noisescale 
         input +=np.expand_dims(y, axis=2)     
         return {'input': input, 'target': target} 
 
 class add_blurnoise(object):
+    def __init__(self, ksizemax=3): 
+        self.ksizemax=ksizemax        
     def __call__(self, sample):
         input, target = sample['input'], sample['target']
         img=input.squeeze()
-        ksizemax=3
+        ksizemax=self.ksizemax
         imshape = img.shape
         kenellist=odd(1,ksizemax)                 
         ksizesize=random.choice(kenellist)
@@ -177,7 +194,11 @@ class add_blurnoise(object):
         input = np.expand_dims( cv2.blur(img, ksize, cv2.BORDER_DEFAULT),axis=2)
         return {'input': input, 'target': target} 
 
-class add_rainnoise(object):  
+class add_rainnoise(object): 
+    def __init__(self, drop_length=20,drop_width=1,drop_color=(1)): 
+        self.drop_length=drop_length
+        self.drop_width=drop_width
+        self.drop_color=drop_color
     def generate_random_lines(self,imshape,slant,drop_length,rain_type):
         drops=[]
         area=imshape[0]*imshape[1]
@@ -211,9 +232,9 @@ class add_rainnoise(object):
         input, target = sample['input'], sample['target']
         img=input.squeeze()
         slant=-1
-        drop_length=20
-        drop_width=1
-        drop_color=(1) ## (200,200,200) a shade of gray
+        drop_length=self.drop_length
+        drop_width=self.drop_width
+        drop_color=self.drop_color ## (200,200,200) a shade of gray
         slant_extreme=slant        
         raintype=['drizzle','heavy','torrential']       
         imshape = img.shape
@@ -227,9 +248,11 @@ class add_rainnoise(object):
         input=np.expand_dims(noise,axis=2)
         return {'input': input, 'target': target} 
  
-class add_gaussnoise(object):   
+class add_gaussnoise(object): 
+    def __init__(self, noiselevel=3): 
+        self.noiselevel=noiselevel
     def __call__(self, sample):
-        noiselevel=3
+        noiselevel=self.noiselevel
         input, target = sample['input'], sample['target']
         img=input.squeeze()
         noise =  np.random.normal(loc=0, scale=random.choice(range(1, 20, 1)), size=img.shape)*0.01*noiselevel
@@ -237,16 +260,18 @@ class add_gaussnoise(object):
         return {'input': input, 'target': target}     
     
 class add_spnoise(object):
-     def __call__(self, sample):
+    def __init__(self, percentage=10): 
+        self.percentage=percentage
+    def __call__(self, sample):
         input, target = sample['input'], sample['target']
         img=input.squeeze()
-        percentage=10
+        percentage=self.percentage
         row,col = img.shape
         s_vs_p = 0.50
         amount =percentage/100
         out = np.copy(img)
       # Salt mode
-#             print(img.shape)
+    #             print(img.shape)
         num_salt = np.ceil(amount * img.size * s_vs_p)
         coords = [np.random.randint(0, i - 1, int(num_salt))
               for i in img.shape]
@@ -260,10 +285,12 @@ class add_spnoise(object):
         return {'input': input, 'target': target}
 
 class add_specklenoise(object):
+    def __init__(self, noiselevel=0.2): 
+        self.noiselevel=noiselevel
     def __call__(self, sample):
         input, target = sample['input'], sample['target']
         img=input.squeeze()
-        noiselevel=0.2   
+        noiselevel=self.noiselevel   
         row,col = img.shape
         gauss = np.random.randn(row,col)
         gauss = gauss.reshape(row,col)        
@@ -272,6 +299,15 @@ class add_specklenoise(object):
         return {'input': input, 'target': target}
     
 class add_noise_FFT(object):
+    def __init__(self, masktype="crossfilter",keep_fraction=0.3,noiselevel=0.3,f_lowpas=80,f_high=10,percentage=5): 
+        self.masktype=masktype
+        self.keep_fraction=keep_fraction
+        self.noiselevel=noiselevel
+        self.f_lowpas=f_lowpas
+        self.f_high=f_high
+        self.percentage=percentage
+        
+        
     def distance(self,point1,point2):
         return sqrt((point1[0]-point2[0])**2 + (point1[1]-point2[1])**2)
 
@@ -294,15 +330,15 @@ class add_noise_FFT(object):
         return base
     
     def __call__(self, sample):
-
         input, target = sample['input'], sample['target']
         img=input.squeeze()                 
-        masktype="adds&pnoise"
-        keep_fraction=0.3
-        noiselevel=0.3
-        f_lowpas=80
-        f_high=10
-        percentage=5
+        masktype=self.masktype
+        keep_fraction=self.keep_fraction
+        noiselevel=self.noiselevel
+        f_lowpas=self.f_lowpas
+        f_high=self.f_high
+        percentage=self.percentage
+        
         im_fft = fftpack.fft2(img)
         if masktype=="crossfilter":     
             im_fft2 = im_fft.copy()           
@@ -357,37 +393,35 @@ class add_noise_FFT(object):
         return {'input': input, 'target': target}  
         
 class add_linearnoise(object):
-    def __call__(self, sample):
-        
-        v=100
-        tsample=0.01
-        slope=50
-        ampli=20
+    def __init__(self, v=100,tsample=2,slope=50,ampli=20): 
+        self.velocity=v
+        self.tsample=tsample
+        self.slope=slope
+        self.ampli=ampli
+    def __call__(self, sample):        
+        v=self.velocity
+        tsample=self.tsample
+        slope=self.slope
+        ampli=self.ampli
         
         input, target = sample['input'], sample['target']
-        img=input.squeeze()
-        
-        
-#         print(input.shape,target.shape)
+        img=input.squeeze()              
         f= random.choice(range(5, 50, 1))
-            # f=30
-        #     print(f)
-        par = {"ox": 0, "dx": 1000/(img.shape[1]), "nx": img.shape[1]/2, "ot": 0, "dt": 0.002, "nt": img.shape[0], "f0":f}     
-        
-        tsample=random.choice(range(1, 20, 1))*tsample
-        t0 = list(np.arange(-5, 5.0, tsample))     
-        theta = [random.choice(range(slope-50, slope+50, 1))]*len(t0)     
-        amp = [random.choice(range(-ampli, ampli, 1))*0.1]*len(t0)
-
+        par = {"ox": 0, "dx": 2000/(img.shape[1]), "nx": img.shape[1]/2, "ot": 0, "dt": 0.002, "nt": img.shape[0], "f0":f}            
+        tsample=random.choice(range(1, 5, 1))*tsample
+        t0 = list(np.arange(-10, 2.0, tsample)) 
+        theta = [random.choice(range(slope, slope+2, 1))]*len(t0) 
+        amp = [random.choice(range(-ampli, ampli, 1))]*len(t0)
         # create axis
         taxis, taxis2, xaxis, yaxis = pylops.utils.seismicevents.makeaxis(par)
 
         # create wavelet
         wav = ricker(taxis[:41], f0=par["f0"])[0]
+#         wav = ricker(taxis, f0=par["f0"])[0]
         y = (
             pylops.utils.seismicevents.linear2d(xaxis, taxis, v, t0, theta, amp, wav)[1]
         )
-        y = np.hstack([np.flip(y.T, axis=1)[:,:], y.T])
+        y = np.hstack([np.flip(y.T, axis=1)[:,1:], y.T])
         input +=np.expand_dims(y, axis=2)
        
         return {'input': input, 'target': target}
