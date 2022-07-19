@@ -391,8 +391,9 @@ class add_noise_FFT(object):
     
         input=np.expand_dims(im_new,axis=2)
         return {'input': input, 'target': target}  
-        
-class add_linearnoise(object):
+ 
+
+class add_hpyer_noise(object):
     def __init__(self, v=100,tsample=2,slope=50,ampli=20): 
         self.velocity=v
         self.tsample=tsample
@@ -403,6 +404,64 @@ class add_linearnoise(object):
         tsample=self.tsample
         slope=self.slope
         ampli=self.ampli
+        dt = 0.002
+        input, target = sample['input'], sample['target']
+        img=input.squeeze()              
+#         f= random.choice(range(5, 50, 1))
+#         par = {"ox": 0, "dx": 2000/(img.shape[1]), "nx": img.shape[1]/2, "ot": 0, "dt": 0.002, "nt": img.shape[0], "f0":f}            
+    
+
+#         print(dd.shape)
+
+        num_events=random.choice(range(5, 10, 1))
+    #     print(num_events)   
+        z=np.sort(np.random.randint(low=50, high=6000, size=(num_events)))
+        v=np.sort(np.random.randint(low=100, high=2500, size=(num_events)))
+    #     print(z,v)
+        for j in range(num_events):   
+            f = random.choice(range(30, 50, 1))
+            #print(f)
+            length = 0.4        
+            x_axis = np.arange(start=0,
+                           stop=1000,
+                           step=1000/(image_list[i].shape[1]))
+            y_axis = np.arange(start=0,
+                               stop=1,
+                               step=50)
+
+            rx, ry = np.meshgrid(x_axis, y_axis)
+            rz=0
+            recs = np.vstack([rx.flatten(),ry.flatten(), np.ones_like(rx.flatten())*rz]).T
+
+            # Compute the traveltimes between a source and all the receivers
+
+            tts = compute_tts([500,0,z[j]], recs, v[j])
+            t_wav = np.arange(-length / 2, (length - dt) / 2, dt)
+            wav = (1.0 - 2.0 * (np.pi ** 2) * (f ** 2) * (t_wav ** 2)) * np.exp(-(np.pi ** 2) * (f ** 2) * (t_wav ** 2))
+
+            x= pylops.waveeqprocessing.marchenko.directwave(wav, tts, image_list[i].shape[0], dt, nfft=None, dist=None, kind='2d', derivative=True)
+#             print(x.shape,dd.shape)
+#             dd=dd+x        
+#         image_RGB.append(dd)   
+#     image_RGB=np.array(np.array(image_RGB)).squeeze()    
+
+            input +=np.expand_dims(x, axis=2)
+       
+            return {'input': input, 'target': target}
+       
+
+class add_linearnoise(object):
+    def __init__(self, v=100,tsample=0.05,slope=10,ampli=20):
+        self.velocity=v
+        self.tsample=tsample
+        self.slope=slope
+        self.ampli=ampli
+    def __call__(self, sample):        
+        v=self.velocity
+        tsample=self.tsample
+        slope=self.slope
+        ampli=self.ampli
+        
         
         input, target = sample['input'], sample['target']
         img=input.squeeze()              
@@ -421,13 +480,104 @@ class add_linearnoise(object):
         y = (
             pylops.utils.seismicevents.linear2d(xaxis, taxis, v, t0, theta, amp, wav)[1]
         )
-        y = np.hstack([np.flip(y.T, axis=1)[:,1:], y.T])
+        y = np.hstack([np.flip(y.T, axis=1)[:,:], y.T])
         input +=np.expand_dims(y, axis=2)
        
         return {'input': input, 'target': target}
 
+class add_hyperbolic_noise(object):
+    def __init__(self, v=100,tsample=0.05,slope=10,ampli=20): 
+        self.velocity=v
+        self.tsample=tsample
+        self.slope=slope
+        self.ampli=ampli
+        
+    def dist_calc(self,r, s):
+        ''' euclidean distance
+        '''
+        dx = r[0] - s[0]
+        dy = r[1] - s[1]
+        dz = r[2] - s[2]
+        return np.sqrt(dx ** 2 + dy ** 2 + dz ** 2)
+
+    def comp_tt(self,dist, vel):
+        ''' assume constant vel model and compute traveltimes
+        '''
+        return dist / vel
+
+    def compute_tts(self,source, recs, vel):
+        ''' compute travel times between a single source and array of receivers
+        '''
+
+        dist = [(lambda r: self.dist_calc(r, source))(r) for r in recs]
+        tts = [(lambda d: self.comp_tt(d, vel))(d) for d in dist]
+
+        return np.array(tts)    
+        
+        
+        
+    
+    def __call__(self, sample):        
+        v=self.velocity
+        tsample=self.tsample
+        slope=self.slope
+        ampli=self.ampli
+        
+        
+        input, target = sample['input'], sample['target']
+        img=input.squeeze()  
+    
+        dt = 0.002 # time sampling
+    
+        
+        dd= np.zeros_like(img)
+#         print(dd.shape)
+
+        num_events=random.choice(range(5, 20, 1))
+    #     print(num_events)   
+        z=np.sort(np.random.randint(low=50, high=6000, size=(num_events)))
+        v=np.sort(np.random.randint(low=100, high=500, size=(num_events)))
+    #     print(z,v)
+        for j in range(num_events):   
+            f = random.choice(range(30, 50, 1))
+            #print(f)
+            length = 0.4        
+            x_axis = np.arange(start=0,
+                           stop=1000,
+                           step=1000/(img.shape[1]))
+            y_axis = np.arange(start=0,
+                               stop=1,
+                               step=50)
+
+            rx, ry = np.meshgrid(x_axis, y_axis)
+            rz=0
+            recs = np.vstack([rx.flatten(),ry.flatten(), np.ones_like(rx.flatten())*rz]).T
+
+            # Compute the traveltimes between a source and all the receivers
+
+            tts = self.compute_tts([500,0,z[j]], recs, v[j])
+            t_wav = np.arange(-length / 2, (length - dt) / 2, dt)
+            wav = (1.0 - 2.0 * (np.pi ** 2) * (f ** 2) * (t_wav ** 2)) * np.exp(-(np.pi ** 2) * (f ** 2) * (t_wav ** 2))
+
+            y= pylops.waveeqprocessing.marchenko.directwave(wav, tts, img.shape[0], dt, nfft=None, dist=None, kind='2d', derivative=True)
+#             print(x.shape,dd.shape)
+
+            input +=np.expand_dims(y, axis=2)
+       
+        return {'input': input, 'target': target}
+#             dd=dd+x        
+#         image_RGB.append(dd)   
+#     image_RGB=np.array(np.array(image_RGB)).squeeze()    
+
+#     return image_RGB   
+        
+    
+  
 def odd(l,u):
     return([a for a in range(l,u) if a%2 != 0])
     
 complex_noise_transforms \
-    = [add_color_noise(),add_bandpassed_noise(),add_blurnoise(),add_rainnoise(),add_gaussnoise(),add_spnoise(),add_specklenoise(),add_linearnoise(),add_noise_FFT()]
+    = [add_color_noise(),add_bandpassed_noise(),add_blurnoise(),add_rainnoise(),add_gaussnoise(),add_spnoise(),add_specklenoise(),add_linearnoise(),add_hyperbolic_noise(),add_noise_FFT(masktype="crossfilter"),add_noise_FFT(masktype="addrandomnoise"),add_noise_FFT(masktype="adds&pnoise"),add_noise_FFT(masktype="lowpassfilter"),add_noise_FFT(masktype="highpassfilter")]
+
+# complex_noise_transforms \
+#     = [add_hpyer_noise()]
