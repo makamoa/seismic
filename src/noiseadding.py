@@ -451,7 +451,7 @@ class add_hpyer_noise(object):
        
 
 class add_linearnoise(object):
-    def __init__(self, v=100,tsample=0.05,slope=10,ampli=20):
+    def __init__(self, v=100,tsample=2,slope=50,ampli=20):
         self.velocity=v
         self.tsample=tsample
         self.slope=slope
@@ -577,7 +577,10 @@ def odd(l,u):
     return([a for a in range(l,u) if a%2 != 0])
     
 complex_noise_transforms \
-    = [add_color_noise(),add_bandpassed_noise(),add_blurnoise(),add_rainnoise(),add_gaussnoise(),add_spnoise(),add_specklenoise(),add_linearnoise(),add_hyperbolic_noise(),add_noise_FFT(masktype="crossfilter"),add_noise_FFT(masktype="addrandomnoise"),add_noise_FFT(masktype="adds&pnoise"),add_noise_FFT(masktype="lowpassfilter"),add_noise_FFT(masktype="highpassfilter")]
+    = [add_color_noise(), add_bandpassed_noise(), add_blurnoise(), add_rainnoise(), add_gaussnoise(), add_spnoise(), add_specklenoise(), add_linearnoise(), add_noise_FFT()]
+
+strong_noise_transforms \
+    = [add_color_noise(),add_bandpassed_noise(),add_blurnoise(),add_rainnoise(),add_gaussnoise(),add_spnoise(),add_specklenoise(),add_linearnoise(tsample=0.05,slope=10,ampli=20),add_hyperbolic_noise(),add_noise_FFT(masktype="crossfilter"),add_noise_FFT(masktype="addrandomnoise"),add_noise_FFT(masktype="adds&pnoise"),add_noise_FFT(masktype="lowpassfilter"),add_noise_FFT(masktype="highpassfilter")]
 
 # complex_noise_transforms \
 #     = [add_hpyer_noise()]

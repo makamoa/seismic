@@ -10,7 +10,7 @@ class AverageMeter(object):
         self.count += n
         self.avg = self.sum / self.count
 
-def train(model, problem,
+def train_(model, problem,
           epochs=10, batch_size=8, learning_rate=1e-5,
           reports_per_epoch = 10):
     pass

@@ -92,7 +92,7 @@ def get_derain_dataset(rootdir="/home/makam0a/Dropbox/projects/denoising/Restorm
         transforms_ += ImageNormalize
     return DerainLoader(rootdir, transform=transforms.Compose(transforms_))
 
-def get_first_break_dataset(rootdir="/home/lius0e/Downloads/maksimnewdata/",
+def get_first_break_dataset(rootdir="/home/makam0a/Dropbox/gendata/data/",
                             target_size=(224, 224),
                             noise_transforms=[]):
     transforms_ = []
