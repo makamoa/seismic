@@ -75,7 +75,7 @@ class DerainLoader(BaseLoader):
         sample = {'input': image, 'target': target}
         return self.transform(sample) if self.transform else sample
 
-def get_derain_dataset(rootdir="/home/makam0a/Dropbox/projects/denoising/Restormer/Deraining/Datasets/train/Rain13K",
+def get_derain_dataset(rootdir="/Users/makam0a/Dropbox/projects/denoising/Restormer/Deraining/Datasets/train/Rain13K",
                        min_size=256, crop_size=(224, 224), target_size=(224, 224), normalize=False,
                        noise_transforms=[]):
     transforms_ = []
@@ -92,7 +92,7 @@ def get_derain_dataset(rootdir="/home/makam0a/Dropbox/projects/denoising/Restorm
         transforms_ += ImageNormalize
     return DerainLoader(rootdir, transform=transforms.Compose(transforms_))
 
-def get_first_break_dataset(rootdir="/home/makam0a/Dropbox/gendata/data/",
+def get_first_break_dataset(rootdir="/Users/makam0a/Dropbox/gendata/data/",
                             target_size=(224, 224),
                             noise_transforms=[]):
     transforms_ = []
@@ -101,7 +101,7 @@ def get_first_break_dataset(rootdir="/home/makam0a/Dropbox/gendata/data/",
     transforms_ += [FlipChannels(only_input=True), ToTensor()]
     return FirstBreakLoader(rootdir, transform=transforms.Compose(transforms_))
 
-def get_denoise_dataset(rootdir="/home/makam0a/Dropbox/gendata/data/",
+def get_denoise_dataset(rootdir="/Users/makam0a/Dropbox/gendata/data/",
                        noise_transforms=[]):
     transforms_ = []
     transforms_ += noise_transforms
