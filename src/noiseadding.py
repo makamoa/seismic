@@ -640,7 +640,7 @@ linear_noise = [add_linearnoise(v_mu=110, v_std = 15,
 
 blurnoise=[add_blurnoise(ampl_mu=9.5, ampl_std=1.0)]
 bandpassed_noise = [add_bandpassed_noise(ampl_mu=9.5, ampl_std=1.0)]
-rainnoise = [add_rainnoise(ampl_mu=9.5, ampl_std=1.0)]
+# rainnoise = [add_rainnoise(ampl_mu=9.5, ampl_std=1.0)]
 spnoise = [add_spnoise(ampl_mu=9.5, ampl_std=1.0)]
 specklenoise=[add_specklenoise(ampl_mu=9.5, ampl_std=1.0)]
 hyperbolic_noise=[add_hyperbolic_noise()]
