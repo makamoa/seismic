@@ -18,6 +18,17 @@ class RandomHorizontalFlip():
             sample['target'] = torch.flip(y, dims=(-1,))
         return sample
 
+class ScaleNormalize():
+    def __init__(self, type='input'):
+        self.type = type
+    def __call__(self, sample):
+        x = sample[self.type]
+        x -= x.min()
+        x /= x.max()
+        x *= 2
+        x -= 1
+        return sample
+
 class BaseNormalize():
     def __init__(self, mean, std):
         self.normalize = transforms.Normalize(mean, std)

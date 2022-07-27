@@ -15,6 +15,7 @@ from numpy.random import default_rng, Generator, RandomState
 from numpy import sum as npsum
 from collections.abc import Iterable
 
+
 # class add_gaussnoise(object):
 #     def __init__(self, noisestd=3):
 #         self.noisemean=noisestd
@@ -33,7 +34,8 @@ from collections.abc import Iterable
 class BaseNoise():
     def __shifted_call__(self, sample):
         out = self.__call__(sample)
-        return {'input' : out['input'] - sample['input'], 'target' : out['target']}
+        return {'input': out['input'] - sample['input'], 'target': out['target']}
+
 
 class add_gaussnoise(BaseNoise):
     def __init__(self, ampl_mu=3.0, ampl_std=1e-5):
@@ -41,7 +43,7 @@ class add_gaussnoise(BaseNoise):
         self.std = ampl_std
 
     def __call__(self, sample):
-        noiselevel = np.random.uniform(low = self.mu - sqrt(3)*self.std, high = self.mu + sqrt(3)*self.std)
+        noiselevel = np.random.uniform(low=self.mu - sqrt(3) * self.std, high=self.mu + sqrt(3) * self.std)
         input, target = sample['input'], sample['target']
         input = input.copy()
         #         print(input.shape,target.shape)
@@ -138,7 +140,7 @@ class add_color_noise(BaseNoise):
         return normal_dist
 
     def __call__(self, sample):
-        noisescale = np.random.uniform(low = self.mu - sqrt(3)*self.std, high = self.mu + sqrt(3)*self.std)
+        noisescale = np.random.uniform(low=self.mu - sqrt(3) * self.std, high=self.mu + sqrt(3) * self.std)
         fmin = 0
         input, target = sample['input'], sample['target']
         input = input.copy()
@@ -156,12 +158,16 @@ class add_color_noise(BaseNoise):
 
 
 class add_bandpassed_noise(BaseNoise):
-    def __init__(self, f_low=1, f_high=10, noisescale=0.5):
-        self.f_low = f_low
-        self.f_high = f_high
-        self.noisescale = noisescale
+    def __init__(self, ampl_mu=0.005, ampl_std=1e-5, flow_mu=1.5, flow_std=1e-3, fhigh_mu=5, fhigh_std=0.5):
+        self.flow_mu = flow_mu
+        self.flow_std = flow_std
+        self.fhigh_mu = fhigh_mu
+        self.fhigh_std = fhigh_std
+        self.mu = ampl_mu
+        self.std = ampl_std
 
-    #     print(BasicNoise)
+        #     print(BasicNoise)
+
     # USEFUL FUNCTIONS
     def band_limited_noise(self, min_freq, max_freq, np_seed_rnd, samples=1024, samplerate=1):
         freqs = np.fft.rfftfreq(samples, d=1 / samplerate)
@@ -181,7 +187,7 @@ class add_bandpassed_noise(BaseNoise):
 
         #     nsc = 0
         for i in range(nrels):
-            nsc = self.noisescale
+            nsc = np.random.uniform(low=self.mu - sqrt(3) * self.std, high=self.mu + sqrt(3) * self.std) * 0.1
 
             # Make bandpassed noise
             noise = self.col_array_noise(d.shape,
@@ -204,9 +210,11 @@ class add_bandpassed_noise(BaseNoise):
         return np.fft.ifft(f).real
 
     def __call__(self, sample):
-        f_low = self.f_low
-        f_high = self.f_high
-        noisescale = self.noisescale
+        f_low = np.random.uniform(low=self.flow_mu - sqrt(3) * self.flow_std,
+                                  high=self.flow_mu + sqrt(3) * self.flow_std)
+        f_high = np.random.uniform(low=self.fhigh_mu - sqrt(3) * self.fhigh_std,
+                                   high=self.fhigh_mu + sqrt(3) * self.fhigh_std)
+
         input, target = sample['input'], sample['target']
         input = input.copy()
         img = input.squeeze()
@@ -216,22 +224,29 @@ class add_bandpassed_noise(BaseNoise):
                                     [0.02, 0.35],
                                     freqrange,
                                     dt=dt,
-                                    nrels=1)).squeeze() * noisescale
+                                    nrels=1)).squeeze()
         input += np.expand_dims(y, axis=2)
         return {'input': input, 'target': target}
 
 
 class add_blurnoise(BaseNoise):
-    def __init__(self, ksizemax=3):
-        self.ksizemax = ksizemax
+    def __init__(self, ampl_mu=0.005, ampl_std=1e-5, kersize_mu=2, kersize_std=2e-4):
+        self.mu = ampl_mu
+        self.std = ampl_std
+        self.kersize_mu = kersize_mu
+        self.kersize_std = kersize_std
 
     def __call__(self, sample):
+        ksizemax = int(np.random.uniform(low=self.kersize_mu - sqrt(3) * self.kersize_std,
+                                         high=self.kersize_mu + sqrt(3) * self.kersize_std))
+
+        noisescale = np.random.uniform(low=self.mu - sqrt(3) * self.std, high=self.mu + sqrt(3) * self.std)
         input, target = sample['input'], sample['target']
         input = input.copy()
         img = input.squeeze()
         imshape = img.shape
-        ksize = (self.ksizemax, self.ksizemax)
-        input = np.expand_dims(cv2.blur(img, ksize, cv2.BORDER_DEFAULT), axis=2)
+        ksize = (ksizemax, ksizemax)
+        input = np.expand_dims((cv2.blur(img, ksize, cv2.BORDER_DEFAULT) - img) * noisescale + img, axis=2)
         return {'input': input, 'target': target}
 
 
@@ -240,10 +255,9 @@ def odd(l, u):
 
 
 class add_rainnoise(BaseNoise):
-    def __init__(self, drop_length=20, drop_width=1, drop_color=(1)):
-        self.drop_length = drop_length
-        self.drop_width = drop_width
-        self.drop_color = drop_color
+    def __init__(self, ampl_mu=0.005, ampl_std=1e-5):
+        self.mu = ampl_mu
+        self.std = ampl_std
 
     def generate_random_lines(self, imshape, slant, drop_length, rain_type):
         drops = []
@@ -280,13 +294,15 @@ class add_rainnoise(BaseNoise):
     def __call__(self, sample):
         input, target = sample['input'], sample['target']
         input = input.copy()
-
+        noisescale = np.random.uniform(low=self.mu - sqrt(3) * self.std, high=self.mu + sqrt(3) * self.std)
         #         print(color)
         img = input.squeeze()
         slant = -1
-        drop_length = self.drop_length
-        drop_width = self.drop_width
-        drop_color = self.drop_color  ## (200,200,200) a shade of gray
+
+        drop_length = 10
+        drop_width = 1
+        drop_color = (1)  ## (200,200,200) a shade of gray
+
         slant_extreme = slant
         raintype = ['drizzle', 'heavy', 'torrential']
         imshape = img.shape
@@ -297,19 +313,26 @@ class add_rainnoise(BaseNoise):
         drop_width = drop_width
         drop_color = drop_color
         noise = self.rain_process(img, slant_extreme, drop_length, drop_color, drop_width, rain_drops)
-        input = np.expand_dims(noise, axis=2)
+        input = np.expand_dims((noise - input) * noisescale, axis=2)
         return {'input': input, 'target': target}
 
 
 class add_spnoise(BaseNoise):
-    def __init__(self, percentage=10):
-        self.percentage = percentage
+    def __init__(self, ampl_mu=0.005, ampl_std=1e-5, per_mu=10, per_std=2e-1):
+        self.mu = ampl_mu
+        self.std = ampl_std
+        self.per_mu = per_mu
+        self.per_std = per_std
 
     def __call__(self, sample):
+        noisescale = np.random.uniform(low=self.mu - sqrt(3) * self.std, high=self.mu + sqrt(3) * self.std)
+
+        percentage = np.random.uniform(low=self.per_mu - sqrt(3) * self.per_std,
+                                       high=self.per_mu + sqrt(3) * self.per_std)
+
         input, target = sample['input'], sample['target']
         input = input.copy()
         img = input.squeeze()
-        percentage = self.percentage
         row, col = img.shape
         s_vs_p = 0.50
         amount = percentage / 100
@@ -325,35 +348,46 @@ class add_spnoise(BaseNoise):
         coords = [np.random.randint(0, i - 1, int(num_pepper))
                   for i in img.shape]
         out[coords] = 0
-        input = np.expand_dims(out, axis=2)
+        input = np.expand_dims(((out - img) * noisescale + img), axis=2)
         return {'input': input, 'target': target}
 
 
 class add_specklenoise(BaseNoise):
-    def __init__(self, noiselevel=0.2):
-        self.noiselevel = noiselevel
+    def __init__(self, ampl_mu=0.005, ampl_std=1e-5):
+        self.mu = ampl_mu
+        self.std = ampl_std
 
     def __call__(self, sample):
+        noisescale = np.random.uniform(low=self.mu - sqrt(3) * self.std, high=self.mu + sqrt(3) * self.std)
+
         input, target = sample['input'], sample['target']
         input = input.copy()
         img = input.squeeze()
-        noiselevel = self.noiselevel
+
         row, col = img.shape
         gauss = np.random.randn(row, col)
         gauss = gauss.reshape(row, col)
-        noisy = img + img * gauss * noiselevel
+        noisy = img + img * gauss * noisescale
         input = np.expand_dims(noisy, axis=2)
         return {'input': input, 'target': target}
 
 
 class add_noise_FFT(BaseNoise):
-    def __init__(self, masktype="crossfilter", keep_fraction=0.3, noiselevel=0.3, f_lowpas=80, f_high=10, percentage=5):
+    def __init__(self, masktype="crossfilter", ampl_mu=0.005, ampl_std=1e-5, frac_mu=0.3, frac_std=1e-3, flow_mu=80,
+                 flow_std=1e-3, fhigh_mu=10, fhigh_std=0.5, per_mu=5, per_std=2e-1):
         self.masktype = masktype
-        self.keep_fraction = keep_fraction
-        self.noiselevel = noiselevel
-        self.f_lowpas = f_lowpas
-        self.f_high = f_high
-        self.percentage = percentage
+        self.mu = ampl_mu
+        self.std = ampl_std
+
+        self.flow_mu = flow_mu
+        self.flow_std = flow_std
+        self.fhigh_mu = fhigh_mu
+        self.fhigh_std = fhigh_std
+
+        self.per_mu = per_mu
+        self.per_std = per_std
+        self.frac_mu = frac_mu
+        self.frac_std = frac_std
 
     def distance(self, point1, point2):
         return sqrt((point1[0] - point2[0]) ** 2 + (point1[1] - point2[1]) ** 2)
@@ -377,15 +411,20 @@ class add_noise_FFT(BaseNoise):
         return base
 
     def __call__(self, sample):
+        keep_fraction = np.random.uniform(low=self.frac_mu - sqrt(3) * self.frac_std,
+                                          high=self.frac_mu + sqrt(3) * self.frac_std)
+        noiselevel = np.random.uniform(low=self.mu - sqrt(3) * self.std, high=self.mu + sqrt(3) * self.std)
+        f_lowpas = np.random.uniform(low=self.flow_mu - sqrt(3) * self.flow_std,
+                                     high=self.flow_mu + sqrt(3) * self.flow_std)
+        f_high = np.random.uniform(low=self.fhigh_mu - sqrt(3) * self.fhigh_std,
+                                   high=self.fhigh_mu + sqrt(3) * self.fhigh_std)
+        percentage = np.random.uniform(low=self.per_mu - sqrt(3) * self.per_std,
+                                       high=self.per_mu + sqrt(3) * self.per_std)
+
         input, target = sample['input'], sample['target']
         input = input.copy()
         img = input.squeeze()
         masktype = self.masktype
-        keep_fraction = self.keep_fraction
-        noiselevel = self.noiselevel
-        f_lowpas = self.f_lowpas
-        f_high = self.f_high
-        percentage = self.percentage
 
         im_fft = fftpack.fft2(img)
         if masktype == "crossfilter":
@@ -441,10 +480,10 @@ class add_noise_FFT(BaseNoise):
 
 
 class add_linearnoise(BaseNoise):
-    def __init__(self,  v_mu=110, v_std=1e-2,
-                        tsample_mu=0.065, tsample_std=1e-3,
-                        slope_mu=7.5, slope_std=1e-3,
-                        ampl_mu=3.65, ampl_std=0.5):
+    def __init__(self, v_mu=110, v_std=1e-2,
+                 tsample_mu=0.065, tsample_std=1e-3,
+                 slope_mu=7.5, slope_std=1e-3,
+                 ampl_mu=3.65, ampl_std=0.5):
         self.v_mu = v_mu
         self.v_std = v_std
         self.tsample_mu = tsample_mu
@@ -455,10 +494,12 @@ class add_linearnoise(BaseNoise):
         self.std = ampl_std
 
     def __call__(self, sample):
-        v = np.random.uniform(low = self.v_mu - sqrt(3)*self.v_std, high = self.v_mu + sqrt(3)*self.v_std)
-        tsample = np.random.uniform(low = self.tsample_mu - sqrt(3)*self.tsample_std, high = self.tsample_mu + sqrt(3)*self.tsample_std)
-        slope = np.random.uniform(low = self.slope_mu - sqrt(3)*self.slope_std, high = self.slope_mu + sqrt(3)*self.slope_std)
-        ampli = np.random.uniform(low = self.mu - sqrt(3)*self.std, high = self.mu + sqrt(3)*self.std)
+        v = np.random.uniform(low=self.v_mu - sqrt(3) * self.v_std, high=self.v_mu + sqrt(3) * self.v_std)
+        tsample = np.random.uniform(low=self.tsample_mu - sqrt(3) * self.tsample_std,
+                                    high=self.tsample_mu + sqrt(3) * self.tsample_std)
+        slope = np.random.uniform(low=self.slope_mu - sqrt(3) * self.slope_std,
+                                  high=self.slope_mu + sqrt(3) * self.slope_std)
+        ampli = np.random.uniform(low=self.mu - sqrt(3) * self.std, high=self.mu + sqrt(3) * self.std)
 
         input, target = sample['input'], sample['target']
 
@@ -486,12 +527,23 @@ class add_linearnoise(BaseNoise):
 
 
 class add_hyperbolic_noise(BaseNoise):
-    def __init__(self, v=100, tsample=0.05, noisedivide=2, ampli=20):
-        self.velocity = v
-        self.tsample = tsample
-        self.noisedivide = noisedivide
 
-    #         self.ampli=ampli
+    def __init__(self, v_mu=100, v_std=1e-1,
+                 tsample_mu=0.05, tsample_std=1e-3,
+                 ampl_mu=3.65, ampl_std=0.5):
+        self.v_mu = v_mu
+        self.v_std = v_std
+        self.tsample_mu = tsample_mu
+        self.tsample_std = tsample_std
+        #         self.noisedivide_mu = noisedivide_mu
+        #         self.noisedivide_std = noisedivide_std
+        self.mu = ampl_mu
+        self.std = ampl_std
+
+    #     def __init__(self, v=100, tsample=0.05, noisedivide=2, ampli=20):
+    #         self.velocity = v
+    #         self.tsample = tsample
+    #         self.noisedivide = noisedivide
 
     def dist_calc(self, r, s):
         ''' euclidean distance
@@ -516,8 +568,12 @@ class add_hyperbolic_noise(BaseNoise):
         return np.array(tts)
 
     def __call__(self, sample):
-        v = self.velocity
-        tsample = self.tsample
+        noiselevel = np.random.uniform(low=self.mu - sqrt(3) * self.std, high=self.mu + sqrt(3) * self.std)
+        v = np.random.uniform(low=self.v_mu - sqrt(3) * self.v_std, high=self.v_mu + sqrt(3) * self.v_std)
+        tsample = np.random.uniform(low=self.tsample_mu - sqrt(3) * self.tsample_std,
+                                    high=self.tsample_mu + sqrt(3) * self.tsample_std)
+        #         v = self.velocity
+        #         tsample = self.tsample
         #         slope=self.slope
         #         ampli=self.ampli
 
@@ -560,7 +616,7 @@ class add_hyperbolic_noise(BaseNoise):
                                                              kind='2d', derivative=True)
             #             print(x.shape,dd.shape)
 
-            input += np.expand_dims(y, axis=2) / self.noisedivide
+            input += np.expand_dims(y, axis=2) * noiselevel
 
         return {'input': input, 'target': target}
 
@@ -573,21 +629,46 @@ class CombinedTransforms():
             self.scale = [scale] * len(transforms)
 
     def __call__(self, sample):
-        noises = [transform.__shifted_call__(sample)['input'] * scale for transform, scale in zip(self.transforms, self.scale)]
+        noises = [transform.__shifted_call__(sample)['input'] * scale for transform, scale in
+                  zip(self.transforms, self.scale)]
         noise = sum(noises)
-        self.signal_to_noise = 1 / noise.max()
-        print(self.signal_to_noise)
+        #self.signal_to_noise = 1 / noise.max()
         return {'input': noise + sample['input'], 'target': sample['target']}
+
 
 gaussian_noise = [add_gaussnoise(ampl_mu=9.5, ampl_std=1.0)]
 color_noise = [add_color_noise(ampl_mu=0.95, ampl_std=2e-1)]
-linear_noise = [add_linearnoise(v_mu=110, v_std = 15,
-                                         tsample_mu=0.065, tsample_std=1e-2,
-                                         slope_mu=9.5, slope_std=5,
-                                         ampl_mu=3.75, ampl_std=0.5)]
+linear_noise = [add_linearnoise(v_mu=110, v_std=15,
+                                tsample_mu=0.065, tsample_std=1e-2,
+                                slope_mu=9.5, slope_std=5,
+                                ampl_mu=3.75, ampl_std=0.5)]
+
+blurnoise = [add_blurnoise(ampl_mu=9.5, ampl_std=1.0)]
+bandpassed_noise = [add_bandpassed_noise(ampl_mu=9.5, ampl_std=1.0)]
+# rainnoise = [add_rainnoise(ampl_mu=9.5, ampl_std=1.0)]
+spnoise = [add_spnoise(ampl_mu=9.5, ampl_std=1.0)]
+specklenoise = [add_specklenoise(ampl_mu=9.5, ampl_std=1.0)]
+hyperbolic_noise = [add_hyperbolic_noise(ampl_mu=5.5, ampl_std=1)]
+cross_noise_FFT = [add_noise_FFT(masktype="crossfilter")]
+random_noise_FFT = [add_noise_FFT(masktype="addrandomnoise", ampl_mu=325.0, ampl_std=60)]
 
 gaussian_color_noise = gaussian_noise + color_noise
 gaussian_color_linear_noise = gaussian_noise + color_noise + linear_noise
+gaussian_color_linear_fft_noise = gaussian_color_linear_noise + random_noise_FFT
+gaussian_color_linear_fft_hyperbolic_noise = gaussian_color_linear_fft_noise + hyperbolic_noise
+
+noise_types = {
+    0 : gaussian_color_noise,
+    1 : gaussian_color_linear_noise,
+    2 : gaussian_color_linear_fft_noise,
+    3 : gaussian_color_linear_fft_hyperbolic_noise
+}
+
+def build_noise_transforms(noise_type, scale):
+    noise_transforms = noise_types[noise_type]
+    noise_level = scale / sqrt(len(noise_transforms))
+    return [CombinedTransforms(*noise_transforms,scale=noise_level)]
+
 #
 # color_noise = [add_color_noise(noisescale=np.random.uniform(low=0.65, high=1.35, size=None))]
 # linear_noise = [add_linearnoise(v=np.random.uniform(low=100, high=120, size=None),
