@@ -11,8 +11,9 @@ SNIST/
 
 # C extensions
 *.so
-
+*.pkl
 # Distribution / packaging
+.DS_Store
 .Python
 build/
 develop-eggs/
