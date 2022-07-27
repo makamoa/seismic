@@ -98,7 +98,7 @@ def get_first_break_dataset(rootdir="/home/makam0a/Dropbox/gendata/data/",
     transforms_ = []
     transforms_ += noise_transforms
     transforms_ += [ChangeType(problem='segment')]
-    transforms_ += [ScaleNormalize('input'), ScaleNormalize('target')]
+    transforms_ += [ScaleNormalize('input')]
     transforms_ += [FlipChannels(only_input=True), ToTensor()]
     return FirstBreakLoader(rootdir, transform=transforms.Compose(transforms_))
 

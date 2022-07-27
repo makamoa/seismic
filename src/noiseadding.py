@@ -658,6 +658,7 @@ gaussian_color_linear_fft_noise = gaussian_color_linear_noise + random_noise_FFT
 gaussian_color_linear_fft_hyperbolic_noise = gaussian_color_linear_fft_noise + hyperbolic_noise
 
 noise_types = {
+    -1: [],
     0 : gaussian_color_noise,
     1 : gaussian_color_linear_noise,
     2 : gaussian_color_linear_fft_noise,
@@ -665,6 +666,8 @@ noise_types = {
 }
 
 def build_noise_transforms(noise_type, scale):
+    if noise_type == -1:
+        return noise_types[-1]
     noise_transforms = noise_types[noise_type]
     noise_level = scale / sqrt(len(noise_transforms))
     return [CombinedTransforms(*noise_transforms,scale=noise_level)]

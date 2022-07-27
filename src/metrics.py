@@ -29,13 +29,14 @@ class MetricsBase(object):
     def reset(self):
         raise NotImplementedError
 
-class Metrics(MetricsBase):
+class ConfusionMatrix(MetricsBase):
     def __init__(self, num_classes, names):
-        super(Metrics, self).__init__(num_classes, names)
+        super(ConfusionMatrix, self).__init__(num_classes, names)
         assert num_classes == len(names)
         self.num_classes = num_classes
         self.names = names
         self.confusion_matrix = np.zeros((self.num_classes,) * 2)
+        self.name = 'mIoU'
 
     def pixel_accuracy(self):
         acc = np.diag(self.confusion_matrix).sum() / self.confusion_matrix.sum()
@@ -52,6 +53,9 @@ class Metrics(MetricsBase):
                 np.diag(self.confusion_matrix))
         MIoU = np.nanmean(MIoU)
         return MIoU
+
+    def get(self):
+        return self.mean_intersection_over_union()
 
     def frequency_weighted_intersection_over_union(self):
         freq = np.sum(self.confusion_matrix, axis=1) / np.sum(self.confusion_matrix)
@@ -100,3 +104,39 @@ class Metrics(MetricsBase):
 
     def reset(self):
         self.confusion_matrix = np.zeros((self.num_classes,) * 2)
+
+
+class RMSE(object):
+    def __init__(self):
+        self.sq_errors = []
+        self.num_pix = 0
+        self.name = 'RMSE'
+
+    def get(self):
+        return np.sqrt(
+            np.sum(np.array(self.sq_errors)) / self.num_pix
+        )
+
+    def add_batch(self, pred, target):
+        sqe = (pred - target) ** 2
+        self.sq_errors.append(np.sum(sqe))
+        self.num_pix += target.size
+
+    def reset(self):
+        self.sq_errors = []
+        self.num_pix = 0
+
+
+# Used to keep track of statistics
+class AverageMeter(object):
+    def __init__(self):
+        self.val = 0
+        self.avg = 0
+        self.sum = 0
+        self.count = 0
+
+    def update(self, val, n=1):
+        self.val = val
+        self.sum += val * n
+        self.count += n
+        self.avg = self.sum / self.count

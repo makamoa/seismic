@@ -1,12 +1,6 @@
-import os
-import glob
-import torch
-import numpy as np
-from skimage import io, transform
-from torchvision import transforms
-from swin import BaseSwinUnet
-from restormer import BaseRestormer
-from bunet import BaseUnet
+from .swin import BaseSwinUnet
+from .restormer import BaseRestormer
+from .bunet import BaseUnet
 
 def build_model(model, problem):
     if model == 'restormer':
