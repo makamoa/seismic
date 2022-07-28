@@ -134,6 +134,7 @@ def train_denoise(model_type='unet', noise_type=-1, noise_scale=0, gpu_id=0,
            train_loader, valid_loader, device,
            epochs=epochs, learning_rate=learning_rate, tb=tb, **train_args)
     torch.save(model.state_dict(), save_path)
+    tb.close()
     print('\nTraining done. Model saved ({}).'.format(save_path))
 
 def train_first_break(model_type='unet', noise_type=-1, noise_scale=0, gpu_id=0,
@@ -146,7 +147,7 @@ def train_first_break(model_type='unet', noise_type=-1, noise_scale=0, gpu_id=0,
     train_dataset, val_dataset = get_train_val_dataset(denoise_dataset)
     train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, num_workers=workers)
     valid_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False, num_workers=workers)
-    run_id = f'{model_type}_denoise_noisetype_{noise_type}_noisescale_{noise_scale}'
+    run_id = f'{model_type}_firstbreak_noisetype_{noise_type}_noisescale_{noise_scale}'
     save_path = os.path.join(METADATA, run_id + '.pkl')
     tb = SummaryWriter('/home/makam0a/tensorboard/denoising/logs/firstbreak/' + run_id)
     loss_fn = nn.CrossEntropyLoss()
@@ -155,6 +156,7 @@ def train_first_break(model_type='unet', noise_type=-1, noise_scale=0, gpu_id=0,
            train_loader, valid_loader, device,
            epochs=epochs, learning_rate=learning_rate, tb=tb, **train_args)
     torch.save(model.state_dict(), save_path)
+    tb.close()
     print('\nTraining done. Model saved ({}).'.format(save_path))
 
 if __name__ == "__main__":
