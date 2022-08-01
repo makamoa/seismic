@@ -17,7 +17,7 @@ from collections.abc import Iterable
 import matplotlib.pyplot as plt
 from scipy.fftpack import fft, ifft
 from scipy.signal import butter, lfilter, freqz
-from utils import ScaleNormalize
+from utils import ScaleNormalize, RandomShift
 
 
 def butter_lowpass(cutoff, fs, order=5):
@@ -736,6 +736,7 @@ gaussian_color_linear_fft_noise = gaussian_color_linear_noise + random_noise_FFT
 gaussian_color_linear_fft_hyperbolic_noise = gaussian_color_linear_fft_noise + hyperbolic_noise
 low_pass_noise = [LowPassFilter(cutoff_mu=0.6, cutoff_std=0.05), ScaleNormalize('input')]
 trace_noise = [TraceMask(n_mu=5, n_std=2, w_mu=8, w_std=3)]
+random_shift = [RandomShift(mean=2.5, std=1.0, shift_mean=20, shift_std=10)]
 
 noise_types = {
     -1: [],
@@ -744,7 +745,8 @@ noise_types = {
     2 : {'linear' : gaussian_color_linear_fft_noise, 'nonlinear' : []},
     3 : {'linear' : gaussian_color_linear_fft_hyperbolic_noise, 'nonlinear' : []},
     4 : {'linear' : gaussian_color_linear_noise, 'nonlinear' : low_pass_noise},
-    5 : {'linear' : gaussian_color_linear_noise, 'nonlinear' : (trace_noise + low_pass_noise)}
+    5 : {'linear' : gaussian_color_linear_noise, 'nonlinear' : (trace_noise + low_pass_noise)},
+    6 : {'linear' : gaussian_color_linear_noise, 'nonlinear' : (random_shift + trace_noise + low_pass_noise)}
 }
 
 def build_noise_transforms(noise_type, scale):

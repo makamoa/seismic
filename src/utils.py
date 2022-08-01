@@ -2,6 +2,7 @@ import torch
 import numpy as np
 from skimage import io, transform
 from torchvision import transforms
+from skimage.transform import AffineTransform, warp
 
 imagenet_mean = np.array([0.485, 0.456, 0.406])
 imagenet_std = np.array([0.229, 0.224, 0.225])
@@ -27,6 +28,29 @@ class ScaleNormalize():
         x /= x.max()
         x *= 2
         x -= 1
+        return sample
+
+class RandomShift():
+    def __init__(self, mean=1, std=1e-5, shift_mean=0, shift_std=1e-3):
+        self.mean = mean
+        self.std = std
+        self.shift_mean = shift_mean
+        self.shift_std = shift_std
+
+    def __call__(self, sample):
+        image, target = sample['input'], sample['target']
+        wx, wy = image.shape[:2]
+        scale = np.random.uniform(low=self.mean - np.sqrt(3) * self.std, high=self.mean + np.sqrt(3) * self.std)
+        shift = scale * np.random.uniform(low=self.shift_mean - np.sqrt(3) * self.shift_std, high=self.shift_mean + np.sqrt(3) * self.shift_std)
+        scaling = AffineTransform(scale=(1, scale), translation=(0, wy - scale*wy - 1))
+        scaled = warp(image, scaling, mode='constant', preserve_range=True)
+        scaled_target = warp(target, scaling, mode='constant', preserve_range=True)
+        shift = AffineTransform(translation=(0, shift))
+        shifted = warp(scaled, shift, mode='constant', preserve_range=True)
+        cval = 1 if target.dtype == np.int else 0
+        shifted_target = warp(scaled_target, shift, mode='constant', preserve_range=True, cval=cval)
+        sample['input'] = shifted.astype(image.dtype)
+        sample['target'] = shifted_target.astype(target.dtype)
         return sample
 
 class BaseNormalize():

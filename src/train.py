@@ -159,9 +159,8 @@ def train_first_break(model_type='unet', noise_type=-1, noise_scale=0, gpu_id=0,
     model.to(device)
     is_pretrained = True if pretrained else False
     if is_pretrained:
-
         load_path = os.path.join(METADATA, pretrained)
-        model.load_state_dict(torch.load(load_path))
+        model.load_state_dict(torch.load(load_path), strict=False)
     noise_transforms = build_noise_transforms(noise_type=noise_type, scale=noise_scale)
     denoise_dataset = get_dataset('firstbreak', noise_transforms=noise_transforms)
     train_dataset, val_dataset = get_train_val_dataset(denoise_dataset)
