@@ -14,7 +14,19 @@ from numpy.fft import irfft, rfftfreq
 from numpy.random import default_rng, Generator, RandomState
 from numpy import sum as npsum
 from collections.abc import Iterable
+import matplotlib.pyplot as plt
+from scipy.fftpack import fft, ifft
+from scipy.signal import butter, lfilter, freqz
+from utils import ScaleNormalize
 
+
+def butter_lowpass(cutoff, fs, order=5):
+    return butter(order, cutoff, fs=fs, btype='low', analog=False)
+
+def butter_lowpass_filter(data, cutoff, fs, order=5, **kwargs):
+    b, a = butter_lowpass(cutoff, fs, order=order)
+    y = lfilter(b, a, data, **kwargs)
+    return y
 
 # class add_gaussnoise(object):
 #     def __init__(self, noisestd=3):
@@ -620,6 +632,72 @@ class add_hyperbolic_noise(BaseNoise):
 
         return {'input': input, 'target': target}
 
+class TraceMask(BaseNoise):
+    def __init__(self, n_mu=5, n_std=1e-3, w_mu=2, w_std=1e-3):
+        self.n_mu = n_mu
+        self.n_std = n_std
+        self.w_mu = w_mu
+        self.w_std = w_std
+
+    def __call__(self, sample):
+        img = sample['input'].copy()
+        wx, wy = img.shape[:2]
+        n = np.random.uniform(low=self.n_mu - sqrt(3) * self.n_std, high=self.n_mu + sqrt(3) * self.n_std)
+        n = round(n)
+        for i in range(n):
+            w = np.random.uniform(low=self.w_mu - sqrt(3) * self.w_std, high=self.w_mu + sqrt(3) * self.w_std)
+            w = round(w)
+            c = np.random.randint(wy)
+            lidx = max(0,c - w)
+            ridx = min(wx, c + w)
+            img[:,lidx:ridx] = 0.0
+
+        return {'input': img,
+                'target': sample['target']}
+
+class LowPassFilter(BaseNoise):
+    def __init__(self, cutoff_mu=0.999, cutoff_std=1e-5, order=5, dt=0.002):
+        self.cutoff_mu = cutoff_mu
+        self.cutoff_std = cutoff_std
+        self.order = order
+        self.dt = dt
+        self.f0 = 1/self.dt
+
+    def __call__(self, sample):
+        self.cutoff = np.random.uniform(low=self.cutoff_mu - sqrt(3) * self.cutoff_std, high=self.cutoff_mu + sqrt(3) * self.cutoff_std)
+        img = sample['input']
+        b, a = butter_lowpass(self.f0*self.cutoff/2.0, self.f0, self.order)
+        filtered = butter_lowpass_filter(img, self.f0*self.cutoff/2.0, self.f0, self.order, axis=0)
+        return {'input': filtered,
+                'target': sample['target']}
+
+    def plot(self, img):
+        wx, wy= img.shape
+        sp = fft(img, axis=0)
+        N = wx
+        n = np.arange(N)
+        f0 = 1/self.dt
+        T = N*self.dt
+        freq = n / T
+        b, a = butter_lowpass(f0*self.cutoff/2.0, f0, self.order)
+        filtered = butter_lowpass_filter(img, f0*self.cutoff/2.0, f0, self.order, axis=0)
+        sp_filtered = fft(filtered, axis=0)
+        plt.figure(figsize=[15,5])
+        plt.subplot(131)
+        plt.imshow(img, cmap='seismic')
+        plt.subplot(132)
+        plt.plot(freq, np.abs(sp).mean(axis=1), c='r')
+        plt.plot(freq, np.abs(sp_filtered).mean(axis=1), c='b')
+        w, h = freqz(b, a, fs=f0, worN=8000)
+        plt.plot(w, np.abs(h), 'b')
+        plt.xlim(0,freq[N//2])
+        plt.axvline(f0*self.cutoff/2.0, color='k')
+        plt.plot(f0*self.cutoff/2.0, 0.5 * np.sqrt(2), 'ko')
+        # plt.xlim(0)
+        plt.subplot(133)
+        plt.imshow(filtered, cmap='seismic')
+        plt.show()
+
 
 class CombinedTransforms():
     def __init__(self, *transforms, scale=1):
@@ -656,13 +734,17 @@ gaussian_color_noise = gaussian_noise + color_noise
 gaussian_color_linear_noise = gaussian_noise + color_noise + linear_noise
 gaussian_color_linear_fft_noise = gaussian_color_linear_noise + random_noise_FFT
 gaussian_color_linear_fft_hyperbolic_noise = gaussian_color_linear_fft_noise + hyperbolic_noise
+low_pass_noise = [LowPassFilter(cutoff_mu=0.6, cutoff_std=0.05), ScaleNormalize('input')]
+trace_noise = [TraceMask(n_mu=5, n_std=2, w_mu=8, w_std=3)]
 
 noise_types = {
     -1: [],
-    0 : gaussian_color_noise,
-    1 : gaussian_color_linear_noise,
-    2 : gaussian_color_linear_fft_noise,
-    3 : gaussian_color_linear_fft_hyperbolic_noise
+    0 : {'linear' : gaussian_color_noise, 'nonlinear' : []},
+    1 : {'linear' : gaussian_color_linear_noise, 'nonlinear' : []},
+    2 : {'linear' : gaussian_color_linear_fft_noise, 'nonlinear' : []},
+    3 : {'linear' : gaussian_color_linear_fft_hyperbolic_noise, 'nonlinear' : []},
+    4 : {'linear' : gaussian_color_linear_noise, 'nonlinear' : low_pass_noise},
+    5 : {'linear' : gaussian_color_linear_noise, 'nonlinear' : (trace_noise + low_pass_noise)}
 }
 
 def build_noise_transforms(noise_type, scale):
@@ -670,7 +752,7 @@ def build_noise_transforms(noise_type, scale):
         return noise_types[-1]
     noise_transforms = noise_types[noise_type]
     noise_level = scale / sqrt(len(noise_transforms))
-    return [CombinedTransforms(*noise_transforms,scale=noise_level)]
+    return noise_transforms['nonlinear'] + [CombinedTransforms(*noise_transforms['linear'], scale=noise_level)]
 
 #
 # color_noise = [add_color_noise(noisescale=np.random.uniform(low=0.65, high=1.35, size=None))]
