@@ -1,0 +1,3 @@
+SEISMICROOT: /home/makam0a/Dropbox/gendata/
+DERAINROOT: /home/makam0a/Dropbox/projects/denoising/Restormer/Deraining/Datasets/
+LOGSROOT: /home/makam0a/tensorboard/denoising/logs/
