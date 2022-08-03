@@ -777,7 +777,7 @@ def build_noise_transforms(noise_type, scale):
     if noise_type == -1:
         return noise_types[-1]
     noise_transforms = noise_types[noise_type]
-    noise_level = scale / sqrt(len(noise_transforms))
+    noise_level = scale / sqrt(len(noise_transforms['linear']))
     return noise_transforms['nonlinear'] + [CombinedTransforms(*noise_transforms['linear'], scale=noise_level)]
 
 #
