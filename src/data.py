@@ -86,9 +86,11 @@ class DerainLoader(BaseLoader):
         sample = {'input': image, 'target': target}
         return self.transform(sample) if self.transform else sample
 
-def get_derain_dataset(rootdir=DERAINTRAIN,
+def get_derain_dataset(rootdir=None,
                        min_size=256, crop_size=(224, 224), target_size=(224, 224), normalize=False,
                        noise_transforms=[]):
+    if rootdir is None:
+        rootdir = DERAINTRAIN
     transforms_ = []
     ImageNormalize = [InputNormalize(imagenet_mean, imagenet_std)]
     ImageChangeType = [ChangeType(), Scale()]
@@ -103,9 +105,11 @@ def get_derain_dataset(rootdir=DERAINTRAIN,
         transforms_ += ImageNormalize
     return DerainLoader(rootdir, transform=transforms.Compose(transforms_))
 
-def get_first_break_dataset(rootdir=SEISMICDIR,
+def get_first_break_dataset(rootdir=None,
                             target_size=(224, 224),
                             noise_transforms=[]):
+    if rootdir is None:
+        rootdir = SEISMICDIR
     transforms_ = []
     transforms_ += noise_transforms
     transforms_ += [ChangeType(problem='segment')]
@@ -113,8 +117,10 @@ def get_first_break_dataset(rootdir=SEISMICDIR,
     transforms_ += [FlipChannels(only_input=True), ToTensor()]
     return FirstBreakLoader(rootdir, transform=transforms.Compose(transforms_))
 
-def get_denoise_dataset(rootdir=SEISMICDIR,
+def get_denoise_dataset(rootdir=None,
                        noise_transforms=[]):
+    if rootdir is None:
+        rootdir = SEISMICDIR
     transforms_ = []
     transforms_ += noise_transforms
     transforms_ += [ChangeType()]

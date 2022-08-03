@@ -25,7 +25,7 @@ class ScaleNormalize():
     def __call__(self, sample):
         x = sample[self.type]
         ### do not modify labels
-        if x.dtype == np.int:
+        if x.dtype == int:
             "int, not modify"
             return sample
         x /= np.abs(x).max()
