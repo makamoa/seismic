@@ -24,10 +24,11 @@ class ScaleNormalize():
         self.type = type
     def __call__(self, sample):
         x = sample[self.type]
-        x -= x.min()
-        x /= x.max()
-        x *= 2
-        x -= 1
+        ### do not modify labels
+        if x.dtype == np.int:
+            "int, not modify"
+            return sample
+        x /= np.abs(x).max()
         return sample
 
 class RandomShift():
@@ -46,9 +47,8 @@ class RandomShift():
         scaled = warp(image, scaling, mode='constant', preserve_range=True)
         scaled_target = warp(target, scaling, mode='constant', preserve_range=True)
         shift = AffineTransform(translation=(0, shift))
-        shifted = warp(scaled, shift, mode='constant', preserve_range=True)
-        cval = 1 if target.dtype == np.int else 0
-        shifted_target = warp(scaled_target, shift, mode='constant', preserve_range=True, cval=cval)
+        shifted = warp(scaled, shift, mode='edge', preserve_range=True)
+        shifted_target = warp(scaled_target, shift, mode='edge', preserve_range=True)
         sample['input'] = shifted.astype(image.dtype)
         sample['target'] = shifted_target.astype(target.dtype)
         return sample

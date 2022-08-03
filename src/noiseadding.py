@@ -21,10 +21,18 @@ from utils import ScaleNormalize, RandomShift
 
 
 def butter_lowpass(cutoff, fs, order=5):
+    return butter(order, cutoff, fs=fs, btype='high', analog=False)
+
+def butter_highpass(cutoff, fs, order=5):
     return butter(order, cutoff, fs=fs, btype='low', analog=False)
 
 def butter_lowpass_filter(data, cutoff, fs, order=5, **kwargs):
     b, a = butter_lowpass(cutoff, fs, order=order)
+    y = lfilter(b, a, data, **kwargs)
+    return y
+
+def butter_highpass_filter(data, cutoff, fs, order=5, **kwargs):
+    b, a = butter_highpass(cutoff, fs, order=order)
     y = lfilter(b, a, data, **kwargs)
     return y
 
@@ -655,6 +663,22 @@ class TraceMask(BaseNoise):
         return {'input': img,
                 'target': sample['target']}
 
+class HighPassFilter(BaseNoise):
+    def __init__(self, cutoff_mu=0.999, cutoff_std=1e-5, order=5, dt=0.002):
+        self.cutoff_mu = cutoff_mu
+        self.cutoff_std = cutoff_std
+        self.order = order
+        self.dt = dt
+        self.f0 = 1/self.dt
+
+    def __call__(self, sample):
+        self.cutoff = np.random.uniform(low=self.cutoff_mu - sqrt(3) * self.cutoff_std, high=self.cutoff_mu + sqrt(3) * self.cutoff_std)
+        img = sample['input']
+        b, a = butter_highpass(self.f0*self.cutoff/2.0, self.f0, self.order)
+        filtered = butter_highpass_filter(img, self.f0*self.cutoff/2.0, self.f0, self.order, axis=0)
+        return {'input': filtered,
+                'target': sample['target']}
+
 class LowPassFilter(BaseNoise):
     def __init__(self, cutoff_mu=0.999, cutoff_std=1e-5, order=5, dt=0.002):
         self.cutoff_mu = cutoff_mu
@@ -736,7 +760,7 @@ gaussian_color_linear_fft_noise = gaussian_color_linear_noise + random_noise_FFT
 gaussian_color_linear_fft_hyperbolic_noise = gaussian_color_linear_fft_noise + hyperbolic_noise
 low_pass_noise = [LowPassFilter(cutoff_mu=0.6, cutoff_std=0.05), ScaleNormalize('input')]
 trace_noise = [TraceMask(n_mu=5, n_std=2, w_mu=8, w_std=3)]
-random_shift = [RandomShift(mean=2.5, std=1.0, shift_mean=20, shift_std=10)]
+random_shift = [RandomShift(mean=2.5, std=1.0, shift_mean=20, shift_std=10), ScaleNormalize('input'), ScaleNormalize('target')]
 
 noise_types = {
     -1: [],
@@ -746,7 +770,7 @@ noise_types = {
     3 : {'linear' : gaussian_color_linear_fft_hyperbolic_noise, 'nonlinear' : []},
     4 : {'linear' : gaussian_color_linear_noise, 'nonlinear' : low_pass_noise},
     5 : {'linear' : gaussian_color_linear_noise, 'nonlinear' : (trace_noise + low_pass_noise)},
-    6 : {'linear' : gaussian_color_linear_noise, 'nonlinear' : (random_shift + trace_noise + low_pass_noise)}
+    6 : {'linear' : gaussian_color_linear_noise, 'nonlinear' : (random_shift + gaussian_color_linear_fft_noise)}
 }
 
 def build_noise_transforms(noise_type, scale):

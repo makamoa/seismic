@@ -1,6 +1,17 @@
 import os
 from torch.utils.data import Dataset, DataLoader, random_split
 from utils import *
+import yaml
+
+# Read YAML file
+with open(os.path.join("../config/", "global_config.yml"), 'r') as stream:
+    data_loaded = yaml.safe_load(stream)
+SEISMICROOT = data_loaded['SEISMICROOT']
+DERAINROOT = data_loaded['DERAINROOT']
+DERAINTRAIN = os.path.join(SEISMICROOT, 'train/Rain13K')
+DERAINTEST = os.path.join(SEISMICROOT, 'test/Rain13K')
+SEISMICDIR = os.path.join(SEISMICROOT, 'data/')
+
 
 class BaseLoader(Dataset):
     def read_input(self, idx):
@@ -75,7 +86,7 @@ class DerainLoader(BaseLoader):
         sample = {'input': image, 'target': target}
         return self.transform(sample) if self.transform else sample
 
-def get_derain_dataset(rootdir="/home/makam0a/Dropbox/projects/denoising/Restormer/Deraining/Datasets/train/Rain13K",
+def get_derain_dataset(rootdir=DERAINTRAIN,
                        min_size=256, crop_size=(224, 224), target_size=(224, 224), normalize=False,
                        noise_transforms=[]):
     transforms_ = []
@@ -92,7 +103,7 @@ def get_derain_dataset(rootdir="/home/makam0a/Dropbox/projects/denoising/Restorm
         transforms_ += ImageNormalize
     return DerainLoader(rootdir, transform=transforms.Compose(transforms_))
 
-def get_first_break_dataset(rootdir="/home/makam0a/Dropbox/gendata/data/",
+def get_first_break_dataset(rootdir=SEISMICDIR,
                             target_size=(224, 224),
                             noise_transforms=[]):
     transforms_ = []
@@ -102,7 +113,7 @@ def get_first_break_dataset(rootdir="/home/makam0a/Dropbox/gendata/data/",
     transforms_ += [FlipChannels(only_input=True), ToTensor()]
     return FirstBreakLoader(rootdir, transform=transforms.Compose(transforms_))
 
-def get_denoise_dataset(rootdir="/home/makam0a/Dropbox/gendata/data/",
+def get_denoise_dataset(rootdir=SEISMICDIR,
                        noise_transforms=[]):
     transforms_ = []
     transforms_ += noise_transforms
