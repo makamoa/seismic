@@ -8,7 +8,7 @@ src/__pycache__/
 SNIST/
 *.py[cod]
 *$py.class
-
+config/
 # C extensions
 *.so
 *.pkl
