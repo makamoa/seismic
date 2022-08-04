@@ -4,6 +4,7 @@ from torch import nn
 def fgsm(model, X, y, loss_fn=nn.CrossEntropyLoss, epsilon=0.1):
     """ Construct FGSM adversarial examples on the examples X"""
     delta = torch.zeros_like(X, requires_grad=True)
+    fgsm.epsilon = epsilon
     loss = loss_fn()(model(X + delta), y)
     loss.backward()
     return epsilon * delta.grad.detach().sign()

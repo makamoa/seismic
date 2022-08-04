@@ -61,13 +61,11 @@ def train_(model, problem, loss_type, metrics,
             # Load a batch and send it to GPU
             x = sample['input'].to(device)
             y = sample['target'].to(device)
-
             # Forward pass: compute predicted y by passing x to the model.
             # add adversarial attacks
             if attack is not None:
                 x += attack(model, x, y, loss_type, **att_args)
             y_pred = model(x)
-
             # Compute and print loss.
             loss = loss_fn(y_pred, y)
 

@@ -139,8 +139,8 @@ def get_dataset(dtype, *pargs, **kwargs):
         raise ValueError("Unknown Dataset Type")
     return dataset
 
-def get_train_val_dataset(dataset, valid_split=0.1):
+def get_train_val_dataset(dataset, valid_split=0.1, **kwargs):
     train_size = int((1 - valid_split) * len(dataset))
     test_size = len(dataset) - train_size
-    train_dataset, val_dataset = torch.utils.data.random_split(dataset, [train_size, test_size])
+    train_dataset, val_dataset = torch.utils.data.random_split(dataset, [train_size, test_size], **kwargs)
     return train_dataset, val_dataset
