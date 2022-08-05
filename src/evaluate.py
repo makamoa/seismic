@@ -42,19 +42,23 @@ class Evaluator:
     def prepare_loader(self, noise_type=-1, noise_scale=0.25):
         noise_transforms = build_noise_transforms(noise_type=noise_type, scale=noise_scale)
         denoise_dataset = get_dataset(self.problem, noise_transforms=noise_transforms)
-        _, val_dataset = get_train_val_dataset(denoise_dataset, generator=torch.Generator().manual_seed(42))
+        _, val_dataset = get_train_val_dataset(denoise_dataset, generator=torch.Generator().manual_seed(42), valid_split=0.01)
         loader = DataLoader(val_dataset, batch_size=self.batch_size, shuffle=False)
         return loader
 
     def prepare_real_loader(self):
-        pass
+        dataset = get_dataset('real')
+        loader = DataLoader(dataset, batch_size=1, shuffle=False)
+        return loader
 
     def evaluate_model(self, eval_type='synthetic', noise_type=-1, noise_scale=0.25, **eval_args):
         if eval_type == 'synthetic':
             loader = self.prepare_loader(noise_type, noise_scale)
+            eval = self.evaluate
         else:
             loader = self.prepare_real_loader()
-        return self.evaluate(loader, prefix=f'{noise_type}_{noise_scale}_',**eval_args)
+            eval = self.eval_real
+        return eval(loader, prefix=f'{noise_type}_{noise_scale}_', **eval_args)
 
     def evaluate(self, loader, plot=True, to_file=True, attack=None, prefix='', **att_args):
         self.metrics.reset()
@@ -74,6 +78,19 @@ class Evaluator:
         if plot:
             self.plot_predictions(x, y, y_pred, delta, epsilon=att_args.get('epsilon', 0.1), to_file=to_file, prefix=prefix)
         return self.metrics.get()
+
+    def plot_noise_palette(self):
+        fig, axes = plt.subplots(7,4, figsize=[10,17])
+        for i, noise_type in enumerate(range(-1, 6)):
+            for j, noise_scale in enumerate([0.25, 0.5, 1.0, 2.0]):
+                loader = self.prepare_loader(noise_type, noise_scale)
+                sample = iter(loader).__next__()
+                x = sample['input'].to(self.device)
+                axes[i,j].imshow(x[0,0], cmap='seismic')
+                axes[i,j].axis('off')
+        fname = os.path.join(self.figdir, 'noise_pallette.jpg')
+        fig.savefig(fname)
+        plt.close(fig)
 
     def evaluate_robustness(self, plot=True, to_file=True, only_linear=False, fast=False, **eval_args):
         self.robustness = np.ones([7, 4]) * -1
@@ -122,7 +139,24 @@ class Evaluator:
         else:
             plt.show()
 
+    def eval_real(self, loader, plot=True, to_file=True, **kwargs):
+        self.metrics.reset()
+        for i, (sample) in enumerate(loader):
+            x, y = sample['input'].to(self.device), sample['target'].to(self.device)
+            with torch.no_grad():
+                y_pred = self.model(x)
+                if self.problem == 'firstbreak':
+                    y_pred = torch.argmax(y_pred, dim=1)  # get the most likely prediction
+            print('_', end='')
+        np.save(EVALDATA + 'real_x.npy', x.detach().cpu().numpy())
+        np.save(EVALDATA + 'real_y.npy', y.detach().cpu().numpy())
+        np.save(EVALDATA + 'real_y_pred.npy', y_pred.detach().cpu().numpy())
+        if plot:
+            self.plot_real(x, y, y_pred, to_file=to_file)
+        return None
 
+    def plot_real(self, *pargs, **kwargs):
+        self.plot_predictions(*pargs, **kwargs, prefix='real_')
 
     def plot_predictions(self, x, y, y_pred, delta=None, epsilon=0.1, to_file=True, prefix=''):
         num = 3 if delta is None else 4
@@ -171,12 +205,15 @@ def evaluate_models(model_type, problem, attack_type='none', **eval_args):
             print(fname)
 
 if __name__ == "__main__":
-    eval = Evaluator('unet_firstbreak_noisetype_1_noisescale_0.5')
-    print(eval.model_type, eval.problem)
     #eval.plot_robustness(from_file=True)
-    for model_type in ['unet', 'swin']:
+    for model_type in ['swin', 'unet']:
         for problem in ['denoise', 'firstbreak']:
             for attack in ['none', 'fgsm']:
                 for eval_attack in [None, fgsm]:
-                    evaluate_models(model_type, problem, attack_type=attack, attack=eval_attack, fast=True)
+                    evaluate_models(model_type, problem, attack_type=attack, attack=eval_attack)
+    #eval.plot_noise_palette()
+    # print(eval.model_type, eval.problem)
+    # eval.evaluate_model(eval_type='real')
+    # for eval_attack in [None, fgsm]:
+    #     eval.evaluate_robustness(plot=True, attack=eval_attack)
     #eval.evaluate_model(plot=True)

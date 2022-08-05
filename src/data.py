@@ -47,7 +47,6 @@ class FirstBreakLoader(BaseLoader):
         sample = {'input': image, 'target': target}
         return self.transform(sample) if self.transform else sample
 
-
 class DenoiseLoader(FirstBreakLoader):
     def __init__(self, *pargs, **kwargs):
         super(DenoiseLoader, self).__init__(*pargs, **kwargs)
@@ -57,8 +56,6 @@ class DenoiseLoader(FirstBreakLoader):
 
     def read_target(self, idx):
         return super(DenoiseLoader, self).read_target(idx)[...,None]
-
-
 
 class DerainLoader(BaseLoader):
     def __init__(self, rootdir, transform=None):
@@ -117,6 +114,35 @@ def get_first_break_dataset(rootdir=None,
     transforms_ += [FlipChannels(only_input=True), ToTensor()]
     return FirstBreakLoader(rootdir, transform=transforms.Compose(transforms_))
 
+
+class RealDataLoader(BaseLoader):
+    def __init__(self, rootdir, transform=None):
+        self.rootdir = rootdir
+        self.inputdir = os.path.join(self.rootdir, 'input/')
+        self.targetdir = os.path.join(self.rootdir, 'target/')
+        self.inputs = os.listdir(self.inputdir)
+        self.targets = os.listdir(self.targetdir)
+        self.transform = transform
+        self.class_names = ['empty', 'wave']
+
+    def __len__(self):
+        assert len(self.targets) == len(self.inputs)
+        return len(self.inputs)
+
+    def read_input(self, idx):
+        image = np.load(os.path.join(self.inputdir, self.inputs[idx]))
+        return image[..., None]
+
+    def read_target(self, idx):
+        image = np.load(os.path.join(self.targetdir, self.targets[idx]))
+        return image[..., None]
+
+    def __getitem__(self, idx):
+        image = self.read_input(idx)
+        target = self.read_target(idx)
+        sample = {'input': image, 'target': target}
+        return self.transform(sample) if self.transform else sample
+
 def get_denoise_dataset(rootdir=None,
                        noise_transforms=[]):
     if rootdir is None:
@@ -128,6 +154,16 @@ def get_denoise_dataset(rootdir=None,
     transforms_ += [FlipChannels(), ToTensor()]
     return DenoiseLoader(rootdir, transform=transforms.Compose(transforms_))
 
+def get_real_dataset(rootdir="../realdata",
+                            target_size=(224, 224),
+                            noise_transforms=[]):
+    transforms_ = []
+    transforms_ += noise_transforms
+    transforms_ += [Resize(target_size=target_size)]
+    transforms_ += [ScaleNormalize('input')]
+    transforms_ += [FlipChannels(), ToTensor()]
+    return RealDataLoader(rootdir, transform=transforms.Compose(transforms_))
+
 def get_dataset(dtype, *pargs, **kwargs):
     if dtype == 'derain':
         dataset = get_derain_dataset(*pargs, **kwargs)
@@ -135,6 +171,8 @@ def get_dataset(dtype, *pargs, **kwargs):
         dataset = get_first_break_dataset(*pargs, **kwargs)
     elif dtype == 'denoise':
         dataset = get_denoise_dataset(*pargs, **kwargs)
+    elif dtype == 'real':
+        dataset = get_real_dataset(*pargs, **kwargs)
     else:
         raise ValueError("Unknown Dataset Type")
     return dataset

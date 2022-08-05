@@ -196,6 +196,7 @@ if __name__ == "__main__":
     parser.add_argument("--alpha", type=float, default=0.01)
     parser.add_argument("--prefix", type=str, default='')
     parser.add_argument("--dataclip", type=bool, default=True)
+    parser.add_argument("--batch_size", type=int, default=8)
     args = parser.parse_args()
     if args.dataclip:
         SEISMICDIR = os.path.join(SEISMICROOT, 'data/')
@@ -209,16 +210,15 @@ if __name__ == "__main__":
         att_args['epsilon'] = args.epsilon
         if args.noise_type != -1:
             # scale attack noise to be the same signal-to-noise
-            att_args['epsilon'] *= max(1 / (args.noise_scale+1e-12) / 4, 1)
+            att_args['epsilon'] *= min(1 / (args.noise_scale+1e-12) / 4, 1)
     else:
         attack = pgd_linf
         att_args['epsilon'] = args.epsilon
         att_args['alpha'] = args.alpha
         if args.noise_type != -1:
             # scale attack noise to be the same signal-to-noise
-            att_args['epsilon'] *= max(1 / (args.noise_scale+1e-12) / 4, 1)
-
+            att_args['epsilon'] *= min(1 / (args.noise_scale+1e-12) / 4, 1)
     if args.problem == 'denoise':
-        train_denoise(args.model, args.noise_type, args.noise_scale,args.device, epochs=args.epochs, attack=attack, pretrained=args.pretrained, att_args=att_args, dataclip=args.dataclip, prefix=args.prefix)
+        train_denoise(args.model, args.noise_type, args.noise_scale,args.device, epochs=args.epochs, attack=attack, pretrained=args.pretrained, att_args=att_args, dataclip=args.dataclip, prefix=args.prefix, batch_size=args.batch_size)
     else:
-        train_first_break(args.model, args.noise_type, args.noise_scale, args.device, epochs=args.epochs, attack=attack, pretrained=args.pretrained, att_args=att_args, dataclip=args.dataclip, prefix=args.prefix)
+        train_first_break(args.model, args.noise_type, args.noise_scale, args.device, epochs=args.epochs, attack=attack, pretrained=args.pretrained, att_args=att_args, dataclip=args.dataclip, prefix=args.prefix, batch_size=args.batch_size)

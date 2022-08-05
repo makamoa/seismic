@@ -9,6 +9,8 @@ SNIST/
 *.py[cod]
 *$py.class
 config/
+realdata/
+src/Untitled.ipynb
 # C extensions
 *.so
 *.pkl
