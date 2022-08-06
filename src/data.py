@@ -25,8 +25,8 @@ class FirstBreakLoader(BaseLoader):
         self.rootdir = rootdir
         self.inputdir = os.path.join(self.rootdir, 'input/')
         self.targetdir = os.path.join(self.rootdir, 'target/')
-        self.inputs = os.listdir(self.inputdir)
-        self.targets = os.listdir(self.targetdir)
+        self.inputs = sorted(os.listdir(self.inputdir))
+        self.targets = sorted(os.listdir(self.targetdir))
         self.transform = transform
         self.class_names = ['empty', 'wave']
 

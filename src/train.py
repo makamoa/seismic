@@ -2,7 +2,7 @@ from metrics import ConfusionMatrix, RMSE
 import torch, torchvision
 import time
 import datetime
-from models.build import build_model
+from models.build import build_model, model_load_weights
 from noiseadding import build_noise_transforms, CombinedTransforms
 from data import get_train_val_dataset, get_dataset, get_train_val_dataset
 from torch.utils.data import Dataset, DataLoader, random_split
@@ -131,12 +131,14 @@ def train_(model, problem, loss_type, metrics,
 def train_denoise(model_type='unet', noise_type=-1, noise_scale=0, gpu_id=0,
                   epochs=30, learning_rate=5e-5, batch_size=8, workers=4, attack=None, pretrained=None, dataclip=True, prefix='', **train_args):
     model = build_model(model_type, 'denoise')
-    device = torch.device("cuda:" + str(gpu_id) if torch.cuda.is_available() else "cpu")
-    model.to(device)
     is_pretrained = True if pretrained else False
     if is_pretrained:
         load_path = os.path.join(METADATA, pretrained)
-        model.load_state_dict(torch.load(load_path))
+        model , state = model_load_weights(model, load_path=load_path)
+        if not state:
+            is_pretrained=False
+    device = torch.device("cuda:" + str(gpu_id) if torch.cuda.is_available() else "cpu")
+    model.to(device)
     noise_transforms = build_noise_transforms(noise_type=noise_type, scale=noise_scale)
     denoise_dataset = get_dataset('denoise', noise_transforms=noise_transforms)
     train_dataset, val_dataset = get_train_val_dataset(denoise_dataset)
@@ -158,12 +160,14 @@ def train_denoise(model_type='unet', noise_type=-1, noise_scale=0, gpu_id=0,
 def train_first_break(model_type='unet', noise_type=-1, noise_scale=0, gpu_id=0,
                   epochs=10, learning_rate=5e-5, batch_size=8, workers=4, attack=None, pretrained=None, dataclip=True, prefix='', **train_args):
     model = build_model(model_type, 'firstbreak')
-    device = torch.device("cuda:" + str(gpu_id) if torch.cuda.is_available() else "cpu")
-    model.to(device)
     is_pretrained = True if pretrained else False
     if is_pretrained:
         load_path = os.path.join(METADATA, pretrained)
-        model.load_state_dict(torch.load(load_path), strict=False)
+        model , state = model_load_weights(model, load_path=load_path)
+        if not state:
+            is_pretrained=False
+    device = torch.device("cuda:" + str(gpu_id) if torch.cuda.is_available() else "cpu")
+    model.to(device)
     noise_transforms = build_noise_transforms(noise_type=noise_type, scale=noise_scale)
     denoise_dataset = get_dataset('firstbreak', noise_transforms=noise_transforms)
     train_dataset, val_dataset = get_train_val_dataset(denoise_dataset)

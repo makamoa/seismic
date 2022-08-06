@@ -1,3 +1,5 @@
+import glob
+
 from metrics import ConfusionMatrix, RMSE
 import torch, torchvision
 import time
@@ -21,10 +23,11 @@ METADATA = '../metadata/'
 EVALDATA = os.path.join(METADATA, 'evaluation/')
 
 class Evaluator:
-    def __init__(self, weight_file, device="cpu", activation=None, batch_size=8):
-        self.weight_file = weight_file[:-4] if weight_file[:-4] == '.pkl' else weight_file
+    def __init__(self, weight_file, device="cpu", activation=None, batch_size=8, skip=0):
+        self.weight_file = weight_file[:-4] if weight_file[-4:] == '.pkl' else weight_file
         self.batch_size = batch_size
-        self.model_type, self.problem = weight_file.split('_')[:2]
+        self.model_type, self.problem = weight_file[skip:].split('_')[:2]
+        print(weight_file[skip:].split('_')[:2])
         if self.problem == 'firstbreak':
             self.metrics = ConfusionMatrix(2, ["empty", "firstbreak"])
             self.loss_type = nn.CrossEntropyLoss
@@ -34,7 +37,7 @@ class Evaluator:
         self.model = build_model(self.model_type, self.problem, activation=activation)
         self.device = torch.device(device)
         self.model.to(device)
-        self.save_path = os.path.join(METADATA, weight_file + '.pkl')
+        self.save_path = os.path.join(METADATA, self.weight_file + '.pkl')
         self.model.load_state_dict(torch.load(self.save_path))
         self.model.eval()
         self.figdir = os.path.join(EVALDATA, 'figures/')
@@ -60,7 +63,7 @@ class Evaluator:
             eval = self.eval_real
         return eval(loader, prefix=f'{noise_type}_{noise_scale}_', **eval_args)
 
-    def evaluate(self, loader, plot=True, to_file=True, attack=None, prefix='', **att_args):
+    def evaluate(self, loader, plot=True, to_file=True, attack=None, prefix='', output=False, **att_args):
         self.metrics.reset()
         for i, (sample) in enumerate(loader):
             x, y = sample['input'].to(self.device), sample['target'].to(self.device)
@@ -75,6 +78,8 @@ class Evaluator:
                     y_pred = torch.argmax(y_pred, dim=1)  # get the most likely prediction
             self.metrics.add_batch(y.detach().cpu().numpy(), y_pred.detach().cpu().numpy())
             print('_', end='')
+        if output:
+            print(f'Metrics({self.metrics.name}) : {self.metrics.get()}')
         if plot:
             self.plot_predictions(x, y, y_pred, delta, epsilon=att_args.get('epsilon', 0.1), to_file=to_file, prefix=prefix)
         return self.metrics.get()
@@ -204,15 +209,33 @@ def evaluate_models(model_type, problem, attack_type='none', **eval_args):
             print("Succeed!")
             print(fname)
 
+def evaluate_all_models(**eval_args):
+    fnames = []
+    for model_type in ['unet', 'swin', 'restormer']:
+        fnames += glob.glob(os.path.join(METADATA, model_type) + '*')
+    for fname in fnames:
+        fname = os.path.basename(fname)
+        print(f'Analysing {fname}')
+        if not os.path.exists(os.path.join(METADATA, fname)):
+            continue
+        eval = Evaluator(fname)
+        eval.evaluate_robustness(**eval_args)
+        print(f'Model {fname} was successfully analyzed!')
+
 if __name__ == "__main__":
     #eval.plot_robustness(from_file=True)
-    for model_type in ['swin', 'unet']:
-        for problem in ['denoise', 'firstbreak']:
-            for attack in ['none', 'fgsm']:
-                for eval_attack in [None, fgsm]:
-                    evaluate_models(model_type, problem, attack_type=attack, attack=eval_attack)
+    # for model_type in ['swin', 'unet']:
+    #     for problem in ['denoise', 'firstbreak']:
+    #         for attack in ['none', 'fgsm']:
+    #             for eval_attack in [None, fgsm]:
+    #                 evaluate_models(model_type, problem, attack_type=attack, attack=eval_attack)
     #eval.plot_noise_palette()
     # print(eval.model_type, eval.problem)
+    evaluate_all_models()
+    # eval = Evaluator('swin_firstbreak_noisetype_0_noisescale_1.0_dataclip_True_attack_none_pretrained_True.pkl')
+    # eval.evaluate_model(noise_type=0, noise_scale=1.0)
+    # eval = Evaluator('ibextestswin_firstbreak_noisetype_0_noisescale_1.0_dataclip_True_attack_none_pretrained_True.pkl', skip=len('ibextest'))
+    # eval.evaluate_model(noise_type=0, noise_scale=1.0)
     # eval.evaluate_model(eval_type='real')
     # for eval_attack in [None, fgsm]:
     #     eval.evaluate_robustness(plot=True, attack=eval_attack)

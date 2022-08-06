@@ -1,16 +1,37 @@
 from .swin import BaseSwinUnet
 from .restormer import BaseRestormer
 from .bunet import BaseUnet
-
+import torch
+import os
 # pretrained_dict = torch.load(save_path)
 # model_dict = model.state_dict()
 #
 # # 1. filter out unnecessary keys
-# pretrained_dict = {k: v for k, v in pretrained_dict.items() if k not in ['unet.conv.weight','unet.conv.bias']}
+# pretrained_dict = {k: v for k, v in pretrained_dict.items() if k not in ['unet.conv.weight','unet.conv.bias','output.weight','output.bias']}
 # # 2. overwrite entries in the existing state dict
 # model_dict.update(pretrained_dict)
 # # 3. load the new state dict
 # model.load_state_dict(pretrained_dict, strict=False)
+
+def model_load_weights(model, load_path):
+    if not os.path.exists(load_path):
+        print('weights not found, run init')
+        return model, False
+    try:
+        print('try to load weights')
+        model.load_state_dict(torch.load(load_path, map_location=torch.device('cpu')), strict=False)
+        print('weights loaded successfully')
+    except:
+        print('fail to load weights')
+        print('try to load pretrained from denoise weights')
+        pretrained_dict = torch.load(load_path, map_location=torch.device('cpu'))
+        model_dict = model.state_dict()
+        pretrained_dict = {k: v for k, v in pretrained_dict.items() if
+                           k not in ['unet.conv.weight', 'unet.conv.bias', 'output.weight', 'output.bias']}
+        model_dict.update(pretrained_dict)
+        model.load_state_dict(pretrained_dict, strict=False)
+        print('weights loaded successfully')
+    return model, True
 
 def build_model(model, problem, activation=None):
     if model == 'restormer':
