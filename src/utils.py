@@ -7,6 +7,11 @@ from skimage.transform import AffineTransform, warp
 imagenet_mean = np.array([0.485, 0.456, 0.406])
 imagenet_std = np.array([0.229, 0.224, 0.225])
 
+def dict_without_key(d, key):
+    new_d = d.copy()
+    new_d.pop(key)
+    return new_d
+
 class RandomHorizontalFlip():
     def __init__(self, prob=0.5):
         self.prob = prob

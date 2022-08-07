@@ -1,19 +1,14 @@
 import glob
-
 from metrics import ConfusionMatrix, RMSE
 import torch, torchvision
-import time
-import datetime
 from models.build import build_model
-from noiseadding import build_noise_transforms, CombinedTransforms
-from data import get_train_val_dataset, get_dataset, get_train_val_dataset
-from torch.utils.data import Dataset, DataLoader, random_split
-from torch.utils.tensorboard import SummaryWriter
+from noiseadding import build_noise_transforms
+from data import get_dataset, get_train_val_dataset
+from torch.utils.data import DataLoader
 import torch.nn as nn
 import os
 import argparse
 from attacks import fgsm, pgd_linf
-import yaml
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
@@ -21,6 +16,10 @@ import seaborn as sn
 
 METADATA = '../metadata/'
 EVALDATA = os.path.join(METADATA, 'evaluation/')
+
+
+def get_attack_scaling(noise_scale=0.25):
+    return min(1 / (noise_scale + 1e-12) / 4, 1)
 
 class Evaluator:
     def __init__(self, weight_file, device="cpu", activation=None, batch_size=8, skip=0):
@@ -58,6 +57,7 @@ class Evaluator:
         if eval_type == 'synthetic':
             loader = self.prepare_loader(noise_type, noise_scale)
             eval = self.evaluate
+            eval_args['epsilon'] = eval_args.get('epsilon', 0.1) * get_attack_scaling(noise_scale=noise_scale)
         else:
             loader = self.prepare_real_loader()
             eval = self.eval_real
@@ -114,7 +114,7 @@ class Evaluator:
                 print(noise_type, noise_scale, self.robustness[i, j])
         attack = eval_args.get('attack',None)
         fname = os.path.join(EVALDATA, 'robustness_' + self.weight_file + '.npy') if attack is None else \
-            os.path.join(EVALDATA, 'robustness_' + f"attacked{attack.epsilon}_" + self.weight_file + '.npy')
+            os.path.join(EVALDATA, 'robustness_' + f"attacked_" + self.weight_file + '.npy')
         np.save(fname, self.robustness)
         if plot:
             self.plot_robustness(attack=attack,to_file=to_file)
@@ -138,7 +138,7 @@ class Evaluator:
         plt.ylabel('noise types')
         if to_file:
             fname = os.path.join(self.figdir, "robust/", filename + '.jpg') if attack is None else \
-                os.path.join(self.figdir, "robust/", f"attacked{attack.epsilon}_" + filename + '.jpg')
+                os.path.join(self.figdir, "robust/", f"attacked_" + filename + '.jpg')
             plt.savefig(fname)
             plt.close()
         else:
@@ -184,7 +184,7 @@ class Evaluator:
             axes[3].set_title("attack")
         if to_file:
             fname = os.path.join(self.figdir, "preds/", prefix + self.weight_file + '.jpg') if delta is None else \
-                os.path.join(self.figdir, "preds/", prefix + f"attacked{epsilon}_" + self.weight_file + '.jpg')
+                os.path.join(self.figdir, "preds/", prefix + f"attacked_" + self.weight_file + '.jpg')
             fig.savefig(fname)
             plt.close(fig)
         else:
@@ -209,7 +209,7 @@ def evaluate_models(model_type, problem, attack_type='none', **eval_args):
             print("Succeed!")
             print(fname)
 
-def evaluate_all_models(**eval_args):
+def evaluate_all_models(check_before=True, **eval_args):
     fnames = []
     for model_type in ['unet', 'swin', 'restormer']:
         fnames += glob.glob(os.path.join(METADATA, model_type) + '*')
@@ -217,6 +217,12 @@ def evaluate_all_models(**eval_args):
         fname = os.path.basename(fname)
         print(f'Analysing {fname}')
         if not os.path.exists(os.path.join(METADATA, fname)):
+            continue
+        attack = eval_args.get('attack', None)
+        output = os.path.join(EVALDATA, 'robustness_' + fname[:-4] + '.npy') if attack is None else \
+            os.path.join(EVALDATA, 'robustness_' + f"attacked_" + fname[:-4] + '.npy')
+        if os.path.exists(output) and check_before:
+            print(f"{fname} already exists; skip!")
             continue
         eval = Evaluator(fname)
         eval.evaluate_robustness(**eval_args)
