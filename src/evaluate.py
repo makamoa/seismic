@@ -237,7 +237,7 @@ if __name__ == "__main__":
     #                 evaluate_models(model_type, problem, attack_type=attack, attack=eval_attack)
     #eval.plot_noise_palette()
     # print(eval.model_type, eval.problem)
-    evaluate_all_models()
+    evaluate_all_models(attack=fgsm)
     # eval = Evaluator('swin_firstbreak_noisetype_0_noisescale_1.0_dataclip_True_attack_none_pretrained_True.pkl')
     # eval.evaluate_model(noise_type=0, noise_scale=1.0)
     # eval = Evaluator('ibextestswin_firstbreak_noisetype_0_noisescale_1.0_dataclip_True_attack_none_pretrained_True.pkl', skip=len('ibextest'))
