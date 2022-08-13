@@ -23,6 +23,14 @@ def get_attack_scaling(noise_scale=0.25):
 
 class Evaluator:
     def __init__(self, weight_file, device="cpu", activation=None, batch_size=8, skip=0):
+        """
+        Basic class to evaluate model
+        :param weight_file: weight file to use
+        :param device: specify device
+        :param activation: specify activation in last layer
+        :param batch_size: batch_size to use in validation. Ignored in real data.
+        :param skip: skip prefix in weight_file name
+        """
         self.weight_file = weight_file[:-4] if weight_file[-4:] == '.pkl' else weight_file
         self.batch_size = batch_size
         self.model_type, self.problem = weight_file[skip:].split('_')[:2]
@@ -42,6 +50,12 @@ class Evaluator:
         self.figdir = os.path.join(EVALDATA, 'figures/')
 
     def prepare_loader(self, noise_type=-1, noise_scale=0.25):
+        """
+        prepare loader
+        :param noise_type: select noise_type: [-1,..., 6] and noise_scale: [0.25,0.5,1.0,2.0]
+        :param noise_scale:
+        :return:
+        """
         noise_transforms = build_noise_transforms(noise_type=noise_type, scale=noise_scale)
         denoise_dataset = get_dataset(self.problem, noise_transforms=noise_transforms)
         _, val_dataset = get_train_val_dataset(denoise_dataset, generator=torch.Generator().manual_seed(42), valid_split=0.01)
@@ -238,6 +252,33 @@ if __name__ == "__main__":
     #eval.plot_noise_palette()
     # print(eval.model_type, eval.problem)
     evaluate_all_models(attack=fgsm)
+    #######################################
+    eval = Evaluator('restormer_firstbreak_noisetype_0_noisescale_2.0_dataclip_True_attack_none_pretrained_True.pkl')
+    eval.evaluate_model('real')
+    eval = Evaluator('restormer_firstbreak_noisetype_0_noisescale_2.0_dataclip_True_attack_fgsm_pretrained_True.pkl')
+    eval.evaluate_model('real')
+    eval = Evaluator('swin_firstbreak_noisetype_3_noisescale_2.0_dataclip_True_attack_none_pretrained_True.pkl')
+    eval.evaluate_model('real')
+    eval = Evaluator('swin_firstbreak_noisetype_3_noisescale_2.0_dataclip_True_attack_fgsm_pretrained_True.pkl')
+    eval.evaluate_model('real')
+    eval = Evaluator('unet_firstbreak_noisetype_3_noisescale_2.0_dataclip_True_attack_none_pretrained_False.pkl')
+    eval.evaluate_model('real')
+    eval = Evaluator('unet_firstbreak_noisetype_3_noisescale_2.0_dataclip_True_attack_fgsm_pretrained_False.pkl')
+    eval.evaluate_model('real')
+    #######################################
+    # eval = Evaluator('restormer_denoise_noisetype_0_noisescale_2.0_dataclip_True_attack_none_pretrained_False.pkl')
+    # eval.evaluate_model('real')
+    # eval = Evaluator('restormer_denoise_noisetype_0_noisescale_2.0_dataclip_True_attack_fgsm_pretrained_False.pkl')
+    # eval.evaluate_model('real')
+    # eval = Evaluator('restormer_denoise_noisetype_0_noisescale_1.0_dataclip_True_attack_none_pretrained_False.pkl')
+    # eval.evaluate_model('real')
+    # eval = Evaluator('restormer_denoise_noisetype_0_noisescale_1.0_dataclip_True_attack_fgsm_pretrained_False.pkl')
+    # eval.evaluate_model('real')
+    # eval = Evaluator('restormer_denoise_noisetype_1_noisescale_1.0_dataclip_True_attack_none_pretrained_False.pkl')
+    # eval.evaluate_model('real')
+    # eval = Evaluator('restormer_denoise_noisetype_1_noisescale_1.0_dataclip_True_attack_fgsm_pretrained_False.pkl')
+    # eval.evaluate_model('real')
+    #######################################
     # eval = Evaluator('swin_firstbreak_noisetype_0_noisescale_1.0_dataclip_True_attack_none_pretrained_True.pkl')
     # eval.evaluate_model(noise_type=0, noise_scale=1.0)
     # eval = Evaluator('ibextestswin_firstbreak_noisetype_0_noisescale_1.0_dataclip_True_attack_none_pretrained_True.pkl', skip=len('ibextest'))

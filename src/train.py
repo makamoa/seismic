@@ -129,7 +129,7 @@ def train_(model, problem, loss_type, metrics,
 
 
 def train_denoise(model_type='unet', noise_type=-1, noise_scale=0, gpu_id=0,
-                  epochs=30, learning_rate=5e-5, batch_size=8, workers=4, attack=None, pretrained=None, dataclip=True, prefix='', **train_args):
+                  epochs=30, learning_rate=5e-5, batch_size=8, workers=4, attack=None, pretrained=None, dataclip=True, prefix='', rootdir=None, **train_args):
     model = build_model(model_type, 'denoise')
     is_pretrained = True if pretrained else False
     if is_pretrained:
@@ -140,7 +140,7 @@ def train_denoise(model_type='unet', noise_type=-1, noise_scale=0, gpu_id=0,
     device = torch.device("cuda:" + str(gpu_id) if torch.cuda.is_available() else "cpu")
     model.to(device)
     noise_transforms = build_noise_transforms(noise_type=noise_type, scale=noise_scale)
-    denoise_dataset = get_dataset('denoise', noise_transforms=noise_transforms)
+    denoise_dataset = get_dataset('denoise', noise_transforms=noise_transforms, rootdir=rootdir)
     train_dataset, val_dataset = get_train_val_dataset(denoise_dataset)
     train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, num_workers=workers)
     valid_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False, num_workers=workers)
@@ -158,7 +158,7 @@ def train_denoise(model_type='unet', noise_type=-1, noise_scale=0, gpu_id=0,
     print('\nTraining done. Model saved ({}).'.format(save_path))
 
 def train_first_break(model_type='unet', noise_type=-1, noise_scale=0, gpu_id=0,
-                  epochs=10, learning_rate=5e-5, batch_size=8, workers=4, attack=None, pretrained=None, dataclip=True, prefix='', **train_args):
+                  epochs=10, learning_rate=5e-5, batch_size=8, workers=4, attack=None, pretrained=None, dataclip=True, prefix='', rootdir=None, **train_args):
     model = build_model(model_type, 'firstbreak')
     is_pretrained = True if pretrained else False
     if is_pretrained:
@@ -169,7 +169,7 @@ def train_first_break(model_type='unet', noise_type=-1, noise_scale=0, gpu_id=0,
     device = torch.device("cuda:" + str(gpu_id) if torch.cuda.is_available() else "cpu")
     model.to(device)
     noise_transforms = build_noise_transforms(noise_type=noise_type, scale=noise_scale)
-    denoise_dataset = get_dataset('firstbreak', noise_transforms=noise_transforms)
+    denoise_dataset = get_dataset('firstbreak', noise_transforms=noise_transforms, rootdir=rootdir)
     train_dataset, val_dataset = get_train_val_dataset(denoise_dataset)
     train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, num_workers=workers)
     valid_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False, num_workers=workers)
@@ -199,13 +199,13 @@ if __name__ == "__main__":
     parser.add_argument("--epsilon", type=float, default=0.1)
     parser.add_argument("--alpha", type=float, default=0.01)
     parser.add_argument("--prefix", type=str, default='')
-    parser.add_argument("--dataclip", type=bool, default=True)
+    parser.add_argument("--dataclip", type=bool, default=False)
     parser.add_argument("--batch_size", type=int, default=8)
     args = parser.parse_args()
     if args.dataclip:
-        SEISMICDIR = os.path.join(SEISMICROOT, 'data/')
+        rootdir = os.path.join(SEISMICROOT, 'data/')
     else:
-        SEISMICDIR = os.path.join(SEISMICROOT, 'normalized/')
+        rootdir = os.path.join(SEISMICROOT, 'normalized/')
     att_args = {}
     if args.attack is None:
         attack = None
@@ -223,6 +223,6 @@ if __name__ == "__main__":
             # scale attack noise to be the same signal-to-noise
             att_args['epsilon'] *= min(1 / (args.noise_scale+1e-12) / 4, 1)
     if args.problem == 'denoise':
-        train_denoise(args.model, args.noise_type, args.noise_scale,args.device, epochs=args.epochs, attack=attack, pretrained=args.pretrained, att_args=att_args, dataclip=args.dataclip, prefix=args.prefix, batch_size=args.batch_size)
+        train_denoise(args.model, args.noise_type, args.noise_scale,args.device, epochs=args.epochs, attack=attack, pretrained=args.pretrained, att_args=att_args, dataclip=args.dataclip, prefix=args.prefix, batch_size=args.batch_size, rootdir=rootdir)
     else:
-        train_first_break(args.model, args.noise_type, args.noise_scale, args.device, epochs=args.epochs, attack=attack, pretrained=args.pretrained, att_args=att_args, dataclip=args.dataclip, prefix=args.prefix, batch_size=args.batch_size)
+        train_first_break(args.model, args.noise_type, args.noise_scale, args.device, epochs=args.epochs, attack=attack, pretrained=args.pretrained, att_args=att_args, dataclip=args.dataclip, prefix=args.prefix, batch_size=args.batch_size, rootdir=rootdir)
