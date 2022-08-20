@@ -13,10 +13,10 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import seaborn as sn
+from skimage import transform
 
 METADATA = '../metadata/'
 EVALDATA = os.path.join(METADATA, 'evaluation/')
-
 
 def get_attack_scaling(noise_scale=0.25):
     return min(1 / (noise_scale + 1e-12) / 4, 1)
@@ -48,6 +48,19 @@ class Evaluator:
         self.model.load_state_dict(torch.load(self.save_path))
         self.model.eval()
         self.figdir = os.path.join(EVALDATA, 'figures/')
+
+    def predict_numpy(self, input, target, target_size=(224, 224)):
+        input_ = transform.resize(input, target_size, preserve_range=True).astype(input.dtype)
+        input_ /= np.abs(input_).max()
+        input_ = torch.from_numpy(input_)[None,None,...].to(self.device)
+        if target is not None:
+            target_ = transform.resize(target, target_size, preserve_range=True).astype(target.dtype)
+            target_ = torch.from_numpy(target_)[None,None,...].to(self.device)
+        else:
+            target_ = None
+        with torch.no_grad():
+            pred_ = self.model(input_)
+        return input_.cpu().numpy(), pred_.cpu().numpy(), target_.cpu().numpy()
 
     def prepare_loader(self, noise_type=-1, noise_scale=0.25):
         """
@@ -251,7 +264,7 @@ if __name__ == "__main__":
     #                 evaluate_models(model_type, problem, attack_type=attack, attack=eval_attack)
     #eval.plot_noise_palette()
     # print(eval.model_type, eval.problem)
-    evaluate_all_models(attack=fgsm)
+    #evaluate_all_models(attack=fgsm)
     #######################################
     eval = Evaluator('restormer_firstbreak_noisetype_0_noisescale_2.0_dataclip_True_attack_none_pretrained_True.pkl')
     eval.evaluate_model('real')
