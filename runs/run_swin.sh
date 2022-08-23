@@ -1,5 +1,7 @@
 #!/bin/bash
 
+cd ../src/ || exit
+
 python train.py --model=swin --problem=denoise --noise_type=2 --noise_scale=2.0 --device=1 --epochs=100
 python train.py --model=swin --problem=denoise --noise_type=2 --noise_scale=2.0 --device=1 --epochs=100 --attack=fgsm
 

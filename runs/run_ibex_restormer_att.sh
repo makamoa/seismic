@@ -1,5 +1,7 @@
 #!/bin/bash
 
+cd ../src/ || exit
+
 python train.py --model=restormer --problem=denoise --noise_type=2 --noise_scale=2.0 --device=0 --epochs=50 --attack=fgsm
 python train.py --model=restormer --problem=firstbreak --noise_type=2 --noise_scale=2.0 --device=0 --epochs=30 --pretrained=restormer_denoise_noisetype_2_noisescale_2.0_dataclip_False_attack_fgsm_pretrained_False.pkl
 
