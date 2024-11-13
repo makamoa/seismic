@@ -4,25 +4,15 @@
 ## License
 
 Use of this software implies accepting all the terms and conditions described in
-the
-[license](https://gitlab.kaust.edu.sa/makam0a/deepnano/-/blob/master/LICENSE)
-document available in this repository.  We remind users that the use of this
+the license document available in this repository.  We remind users that the use of this
 software is permitted for non-commercial applications, and proper credit must be
 given to the authors whenever this software is used.
 
 ## Overall description
 
-This repository contains a demonstration of the flat optics design software ALFRED described in detail in the publication: 
+This project presents a novel algorithm designed to enhance the robustness of pre-trained deep learning models when analyzing real-time data contaminated by operational noise. By leveraging adversarial attacks, the algorithm embeds immunity against various noise profiles directly into the models, surpassing the limitations of standard noise augmentation techniques. This approach allows the models to focus on their primary tasks without being affected by complex noise types that are difficult to model, especially those with variable signal-to-noise ratios. The methodology is demonstrated on two tasks using a noisy seismic-while-drilling dataset: a simple first break picking task and a more challenging denoising task.
 
-*Broadband vectorial ultrathin optics with experimental efficiency up to 99% in the visible via universal approximators*
-
-available as an open access article at [Light: Science & Applications volume 10, Article number: 47 (2021)](https://www.nature.com/articles/s41377-021-00489-7). 
-
-The code makes use of the theory described in the publication:
-
-*Generalized Maxwell projections for multi-mode network Photonics* [Scientific Reports volume 10, Article number: 9038 (2020)](https://doi.org/10.1038/s41598-020-65293-6)
-
-Users are encouraged to read both publications and familiarize themselves with the underlying theory and logic behind the  software.
+To validate the effectiveness of this technique, three deep learning models with different architectures (Unet, Restormer, and Swin Transformer) were trained on a clean synthetic dataset that simulates seismic-while-drilling data. These models were subjected to adversarial attacks to estimate the optimal noise that could influence their predictions. The performance of these adversarially trained models was compared to models trained using traditional noise augmentation methods. Results showed that models trained with adversarial attacks achieved higher accuracy and better generalizability, particularly in picking first breaks with an accuracy of 1 ms and providing detailed waveforms in denoising tasks. This technique reduces the need for manual noise modeling, making it a time-efficient and task-independent solution for enhancing model robustness against complex noise perturbations.
 
 # Getting started
 
